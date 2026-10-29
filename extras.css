@@ -1,0 +1,64 @@
+/* Detune extras: cover-colour theme, lyrics panel, toolbar buttons, and "lite" mode for phones / weak devices. */
+.fab{position:fixed;top:18px;z-index:6;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,120,125,.35);background:rgba(40,8,16,.9);color:var(--ink);display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.6)}
+.fab i{font-size:14px}#themeBtn{right:72px}#lyricsBtn{right:114px}
+.fab[aria-pressed=true],.fab[aria-expanded=true]{background:var(--blood);border-color:#ff7a82}
+
+/* cover theme: rotate the whole palette; the artwork itself is counter-rotated so it keeps its true colours */
+.cover-theme .bg,.cover-theme main,.cover-theme .player,.cover-theme .lyrics,.cover-theme .fab,.cover-theme .helpbtn{filter:hue-rotate(var(--rot,0deg)) saturate(var(--sat,1))}
+.cover-theme #cover img,.cover-theme .thumb img{filter:hue-rotate(var(--irot,0deg)) saturate(var(--isat,1))}
+
+/* lyrics */
+.lyrics{position:fixed;left:0;right:0;margin-inline:auto;width:min(760px,calc(100% - 28px));top:14px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:7;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(155deg,rgba(62,14,24,.94),rgba(18,5,10,.97))}
+.lyrics[hidden],.lyredit[hidden],.lyrbody[hidden]{display:none}
+.lyrics>*{position:relative;z-index:1}
+.lyrhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lyrhead h2{margin:0;font:600 26px/1.1 "Cormorant Garamond",Georgia,serif;display:flex;align-items:center;gap:10px;min-width:0}
+.lyrhead h2 i{font-size:16px;color:#ff5a64}.lyrhead h2 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lyrtools{display:flex;gap:6px;flex:none}
+.lyrbody{position:relative;flex:1;min-height:0;overflow:auto;text-align:center;padding:32% 8px;overscroll-behavior:contain;-webkit-mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(transparent,#000 14%,#000 86%,transparent);scrollbar-width:none}
+.lyrbody::-webkit-scrollbar{display:none}
+.lyr{margin:0;padding:6px 8px;border-radius:10px;font:600 clamp(20px,3vw,30px)/1.3 "Cormorant Garamond",Georgia,serif;color:rgba(244,232,231,.36);transition:color .25s,transform .25s;overflow-wrap:anywhere}
+.lyr.syn{cursor:pointer}.lyr.syn:hover{color:rgba(244,232,231,.7)}
+.lyr.on{color:#fff;transform:scale(1.04);text-shadow:0 0 18px rgba(255,60,75,.7)}
+.lyr.gap{opacity:.5}
+.lyrempty{display:grid;gap:8px;justify-items:center;padding:20px;color:var(--muted);font-size:14px}.lyrempty i{font-size:34px;color:#ff5a64;opacity:.7}.lyrempty p{margin:0;color:var(--ink);font-size:18px}
+.lyredit{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+.lyredit textarea{flex:1;resize:none;min-height:0;background:rgba(10,3,6,.65);color:var(--ink);border:1px solid rgba(255,120,125,.22);border-radius:14px;padding:12px;font:15px/1.5 "DM Sans",system-ui,sans-serif}
+
+/* ---------- lite mode: phones, touch devices, <=4 cores. No blur, no infinite animation, no big shadows/filters ---------- */
+html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;-webkit-tap-highlight-color:transparent}
+html.lite .glass,html.lite .modal,html.lite .toast,html.lite .veil{-webkit-backdrop-filter:none;backdrop-filter:none}
+html.lite .glass{background:linear-gradient(155deg,#3a0f18,#16070c);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+html.lite .modal{background:rgba(14,2,5,.9)}
+html.lite .glass::before,html.lite .glass::after,html.lite .stage::after,html.lite .fog,html.lite .yard,html.lite .embers,html.lite .bg::after,html.lite body::before,html.lite body::after{display:none!important}
+html.lite .bg{background-image:none}
+html.lite .bg::before{width:110px;height:110px;scale:1;filter:none;box-shadow:0 0 50px 16px rgba(200,22,38,.4)}
+html.lite body{background-attachment:scroll}
+html.lite h1,html.lite .cents{filter:none;background-size:100% 100%}
+html.lite .title{text-shadow:none}
+html.lite .cover{scale:1;box-shadow:0 0 0 3px rgba(120,10,24,.5),0 6px 14px rgba(0,0,0,.6)}
+html.lite .player,html.lite .player.playing{box-shadow:0 8px 24px rgba(0,0,0,.65);background:linear-gradient(155deg,#3a0f18,#16070c)}
+html.lite .player.playing .iconbtn.primary,html.lite .iconbtn.primary{scale:1;box-shadow:0 6px 16px rgba(150,10,25,.55)}
+html.lite .track.active{box-shadow:inset 0 0 0 1px rgba(255,110,120,.5)}
+html.lite .track.active .thumb{scale:1}html.lite .is-playing .track.active::after{display:none}
+html.lite .visual{box-shadow:none;background:#12050a}
+html.lite .range::-webkit-slider-thumb,html.lite #seek::-webkit-slider-thumb,html.lite .eqgrid label .range::-webkit-slider-thumb{box-shadow:0 1px 4px rgba(0,0,0,.7)}
+html.lite .lyrbody{-webkit-mask-image:none;mask-image:none}
+html.lite .lyr.on{transform:none;text-shadow:none}
+html.lite .lyrics{background:#1c0910}
+
+/* touch ergonomics + phone layout */
+@media(pointer:coarse){
+ button,select,input,label{touch-action:manipulation}
+ input,select,textarea{font-size:16px}
+ .iconbtn{width:44px;height:44px}.iconbtn.primary{width:52px;height:52px}
+ .secondary{min-height:40px}.secondary.icon{width:40px;height:40px}
+ .range{height:34px}.track{min-height:62px}.track input[type=checkbox]{width:22px;height:22px}
+ .fab,.helpbtn{width:40px;height:40px}
+}
+@media(max-width:900px){
+ .helpbtn{right:10px;top:12px}#themeBtn{right:56px;top:12px}#lyricsBtn{right:102px;top:12px}
+ .lyrics{top:8px;bottom:calc(112px + env(safe-area-inset-bottom));width:calc(100% - 16px);padding:14px}
+ .lyrhead h2{font-size:22px}.secondary:not(.icon) i{margin-right:0}#lyrImport{font-size:0}#lyrImport i{font-size:13px}
+ .library{height:auto;min-height:70vh}.tracks{max-height:none}
+}
