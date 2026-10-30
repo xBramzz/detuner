@@ -4,15 +4,29 @@ const $=id=>document.getElementById(id),R=document.documentElement,a=$("audio"),
 const LS={get:k=>{try{return localStorage.getItem(k)}catch{return null}},set:k=>v=>{try{localStorage.setItem(k,v);return true}catch{return false}},del:k=>{try{localStorage.removeItem(k)}catch{}}};
 function note(m){const t=$("toast");t.textContent=m;t.style.display="block";clearTimeout(note.t);note.t=setTimeout(()=>t.style.display="none",3000)}
 /* ---------- cover theme ---------- */
-const tb=$("themeBtn");let on=LS.get("detune-cover-theme")==="1";
+const tb=$("themeBtn"),S=R.style;let on=LS.get("detune-cover-theme")==="1";
 function dominant(img){const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,32,32);const d=x.getImageData(0,0,32,32).data,bins=new Float32Array(36);let tw=0,ts=0;
  for(let i=0;i<d.length;i+=4){const r=d[i]/255,g=d[i+1]/255,b=d[i+2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,df=mx-mn;if(df<.08)continue;
   let h=mx===r?((g-b)/df)%6:mx===g?(b-r)/df+2:(r-g)/df+4;h=(h*60+360)%360;const w=df*(1-Math.abs(2*l-1))+.001;bins[(h/10)|0]+=w;tw+=w;ts+=w*df/(1-Math.abs(2*l-1)+.001)}
  if(tw<1)return null;let p=0;for(let i=1;i<36;i++)if(bins[i]>bins[p])p=i;return{h:p*10+5,s:Math.min(1,ts/tw)}}
-function setTheme(rot,sat){R.style.setProperty("--rot",rot+"deg");R.style.setProperty("--irot",-rot+"deg");R.style.setProperty("--sat",sat.toFixed(2));R.style.setProperty("--isat",(1/sat).toFixed(2))}
-function sync(){tb.setAttribute("aria-pressed",on);if(!on){R.classList.remove("cover-theme");return}
- const img=$("cover").querySelector("img");if(!img){setTheme(0,1);R.classList.remove("cover-theme");return}
- const go=()=>{try{const r=dominant(img);if(!r)setTheme(0,.15);else setTheme((r.h-355+360)%360,Math.max(.3,Math.min(1.2,r.s/.8)));R.classList.add("cover-theme")}catch(e){console.warn("Cover colour failed",e)}};
+const hsl=(h,s,l)=>`hsl(${((h%360)+360)%360|0} ${Math.round(Math.min(1,s)*100)}% ${Math.round(Math.min(1,l)*100)}%)`;
+const POOL_KEYS=["--blood","--blood-hi","--blood-dk","--accent","--focus","--edge","--ink","--muted","--glass","--pool0","--pool1","--pool2","--moon","--fog","--grad-a","--grad-b","--thumb-a","--edge-soft","--tint-soft","--glow","--glow-hi"];
+/* Retint via CSS custom properties instead of hue-rotating the DOM (which smeared text and
+   forced the fixed blood pool to stay red). The pool reads --pool0/1/2 in index.html. */
+function setTheme(h,s){
+  S.setProperty("--blood",hsl(h,.78,.30));S.setProperty("--blood-hi",hsl(h,.92,.56));S.setProperty("--blood-dk",hsl(h,.82,.13));
+  S.setProperty("--accent",hsl(h,.78,.26));S.setProperty("--focus",hsl(h,.88,.68));
+  S.setProperty("--edge",hsl(h,.72,.62)+" / .2");S.setProperty("--ink",hsl(h,.28,.94));S.setProperty("--muted",hsl(h,.24,.64));
+  S.setProperty("--glass",hsl(h,.55,.09)+" / .62");S.setProperty("--pool0",hsl(h,.72,.42));S.setProperty("--pool1",hsl(h,.78,.26));S.setProperty("--pool2",hsl(h,.7,.09));
+  S.setProperty("--moon",hsl(h,.8,.5));S.setProperty("--fog",hsl(h,.75,.24));
+  S.setProperty("--grad-a",hsl(h,.55,.95));S.setProperty("--grad-b",hsl(h,.9,.6));
+  S.setProperty("--thumb-a",hsl(h,.85,.78));S.setProperty("--edge-soft",hsl(h,.7,.6)+" / .18");
+  S.setProperty("--tint-soft",hsl(h,.8,.45)+" / .25");S.setProperty("--glow",hsl(h,.8,.5)+" / .4");S.setProperty("--glow-hi",hsl(h,.9,.6)+" / .8");
+}
+function clearTheme(){for(const k of POOL_KEYS)S.removeProperty(k)}
+function sync(){tb.setAttribute("aria-pressed",on);if(!on){R.classList.remove("cover-theme");clearTheme();return}
+ const img=$("cover").querySelector("img");if(!img){clearTheme();R.classList.remove("cover-theme");return}
+ const go=()=>{try{const r=dominant(img);if(!r)setTheme(355,.15);else setTheme(r.h,Math.max(.35,Math.min(1.1,r.s/.7)));R.classList.add("cover-theme")}catch(e){console.warn("Cover colour failed",e)}};
  img.complete&&img.naturalWidth?go():img.addEventListener("load",go,{once:true})}
 tb.onclick=()=>{on=!on;LS.set("detune-cover-theme")(on?"1":"0");sync();note(on?"Colours now follow the album cover.":"Classic blood-red theme.")};
 new MutationObserver(sync).observe($("cover"),{childList:true});sync();

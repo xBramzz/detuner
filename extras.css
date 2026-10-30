@@ -1,14 +1,16 @@
 /* Detune extras: cover-colour theme, lyrics panel, toolbar buttons, and "lite" mode for phones / weak devices. */
 .fab{position:fixed;top:18px;z-index:6;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,120,125,.35);background:rgba(40,8,16,.9);color:var(--ink);display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.6)}
 .fab i{font-size:14px}#themeBtn{right:72px}#lyricsBtn{right:114px}
-.fab[aria-pressed=true],.fab[aria-expanded=true]{background:var(--blood);border-color:#ff7a82}
+.fab[aria-pressed=true],.fab[aria-expanded=true]{background:var(--blood);border-color:var(--focus)}
 
-/* cover theme: rotate the whole palette; the artwork itself is counter-rotated so it keeps its true colours */
-.cover-theme .bg,.cover-theme main,.cover-theme .player,.cover-theme .lyrics,.cover-theme .fab,.cover-theme .helpbtn{filter:hue-rotate(var(--rot,0deg)) saturate(var(--sat,1))}
-.cover-theme #cover img,.cover-theme .thumb img{filter:hue-rotate(var(--irot,0deg)) saturate(var(--isat,1))}
+/* cover theme retints the CSS custom properties themselves (see extras.js), so every surface —
+   including the fixed blood pool at the bottom of the page — follows the album colour. No filter
+   hacks needed any more. */
+html.cover-theme{transition:--blood .6s}
+.cover-theme .bg::before,.cover-theme body::after{transition:background .6s var(--ease),box-shadow .6s var(--ease)}
 
 /* lyrics */
-.lyrics{position:fixed;left:0;right:0;margin-inline:auto;width:min(760px,calc(100% - 28px));top:14px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:7;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(155deg,rgba(62,14,24,.94),rgba(18,5,10,.97))}
+.lyrics{position:fixed;left:0;right:0;margin-inline:auto;width:min(760px,calc(100% - 28px));top:14px;bottom:calc(96px + env(safe-area-inset-bottom));z-index:7;border-radius:22px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 80%,transparent),rgba(18,5,10,.97))}
 .lyrics[hidden],.lyredit[hidden],.lyrbody[hidden]{display:none}
 .lyrics>*{position:relative;z-index:1}
 .lyrhead{display:flex;align-items:center;justify-content:space-between;gap:10px}
@@ -28,7 +30,7 @@
 /* ---------- lite mode: phones, touch devices, <=4 cores. No blur, no infinite animation, no big shadows/filters ---------- */
 html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;-webkit-tap-highlight-color:transparent}
 html.lite .glass,html.lite .modal,html.lite .toast,html.lite .veil{-webkit-backdrop-filter:none;backdrop-filter:none}
-html.lite .glass{background:linear-gradient(155deg,#3a0f18,#16070c);box-shadow:0 6px 18px rgba(0,0,0,.5)}
+html.lite .glass{background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 70%,black),var(--pool2));box-shadow:0 6px 18px rgba(0,0,0,.5)}
 html.lite .modal{background:rgba(14,2,5,.9)}
 html.lite .glass::before,html.lite .glass::after,html.lite .stage::after,html.lite .fog,html.lite .yard,html.lite .embers,html.lite .bg::after,html.lite body::before,html.lite body::after{display:none!important}
 html.lite .bg{background-image:none}
@@ -37,7 +39,7 @@ html.lite body{background-attachment:scroll}
 html.lite h1,html.lite .cents{filter:none;background-size:100% 100%}
 html.lite .title{text-shadow:none}
 html.lite .cover{scale:1;box-shadow:0 0 0 3px rgba(120,10,24,.5),0 6px 14px rgba(0,0,0,.6)}
-html.lite .player,html.lite .player.playing{box-shadow:0 8px 24px rgba(0,0,0,.65);background:linear-gradient(155deg,#3a0f18,#16070c)}
+html.lite .player,html.lite .player.playing{box-shadow:0 8px 24px rgba(0,0,0,.65);background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 70%,black),var(--pool2))}
 html.lite .player.playing .iconbtn.primary,html.lite .iconbtn.primary{scale:1;box-shadow:0 6px 16px rgba(150,10,25,.55)}
 html.lite .track.active{box-shadow:inset 0 0 0 1px rgba(255,110,120,.5)}
 html.lite .track.active .thumb{scale:1}html.lite .is-playing .track.active::after{display:none}
@@ -45,7 +47,7 @@ html.lite .visual{box-shadow:none;background:#12050a}
 html.lite .range::-webkit-slider-thumb,html.lite #seek::-webkit-slider-thumb,html.lite .eqgrid label .range::-webkit-slider-thumb{box-shadow:0 1px 4px rgba(0,0,0,.7)}
 html.lite .lyrbody{-webkit-mask-image:none;mask-image:none}
 html.lite .lyr.on{transform:none;text-shadow:none}
-html.lite .lyrics{background:#1c0910}
+html.lite .lyrics{background:color-mix(in srgb,var(--blood-dk) 55%,black)}
 
 /* touch ergonomics + phone layout */
 @media(pointer:coarse){

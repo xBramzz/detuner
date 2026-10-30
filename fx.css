@@ -4,7 +4,7 @@ button{position:relative;overflow:hidden}
 .rip{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,150,155,.7),transparent 65%);transform:translate(-50%,-50%) scale(0);animation:ripple .6s ease-out forwards}
 @keyframes ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
 .embers{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;mix-blend-mode:screen}
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 35%,transparent 38%,rgba(210,20,36,calc(var(--beat)*.3)) 100%)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 35%,transparent 38%,color-mix(in srgb,var(--blood-hi) calc(var(--beat)*42%),transparent) 100%)}
 
 /* entrance: one orchestrated sequence */
 @keyframes flick{0%{opacity:0}6%{opacity:.95}9%{opacity:.1}14%{opacity:1}18%{opacity:.3}24%,100%{opacity:1}}
@@ -20,8 +20,8 @@ h1{background-size:100% 220%;animation:flick 1.8s both,shimmer 7s ease-in-out 1.
 .track:hover{translate:4px 0}
 
 /* spotlight + tilt */
-.glass{background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),rgba(255,90,100,.15),transparent 60%),linear-gradient(155deg,rgba(62,14,24,.66),rgba(20,6,11,.78))}
-.dialog{background:linear-gradient(155deg,rgba(70,14,26,.94),rgba(24,6,12,.96))}
+.glass{background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),color-mix(in srgb,var(--blood-hi) 15%,transparent),transparent 60%),linear-gradient(160deg,color-mix(in srgb,var(--blood-dk) 42%,transparent),var(--glass))}
+.dialog{background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 85%,transparent),rgba(24,6,12,.96))}
 .player{transform:perspective(1100px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:box-shadow .08s linear,transform .35s var(--ease)}
 .player.playing{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 70px rgba(0,0,0,.62),0 0 calc(30px + var(--bass)*100px) calc(var(--bass)*12px) rgba(200,20,35,calc(.18 + var(--bass)*.5))}
 
