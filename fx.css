@@ -1,7 +1,7 @@
 /* Detune FX: everything here reacts to --bass --mid --treb --beat (0..1) published by fx.js */
 :root{--bass:0;--mid:0;--treb:0;--beat:0}
 button{position:relative;overflow:hidden}
-.rip{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,150,155,.7),transparent 65%);transform:translate(-50%,-50%) scale(0);animation:ripple .6s ease-out forwards}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,var(--rip),transparent 65%);transform:translate(-50%,-50%) scale(0);animation:ripple .6s ease-out forwards}
 @keyframes ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
 .embers{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:-1;mix-blend-mode:screen}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at 50% 35%,transparent 38%,color-mix(in srgb,var(--blood-hi) calc(var(--beat)*42%),transparent) 100%)}
@@ -13,8 +13,8 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:4;bac
 @keyframes trackin{from{opacity:0;translate:-14px 0}}
 @keyframes moonidle{to{filter:brightness(1.2)}}
 @keyframes pulsebox{50%{box-shadow:0 0 90px rgba(255,50,70,.9);scale:1.03}}
-h1{background-size:100% 220%;animation:flick 1.8s both,shimmer 7s ease-in-out 1.8s infinite alternate;filter:drop-shadow(0 0 calc(16px + var(--bass)*34px) rgba(220,30,45,calc(.4 + var(--bass)*.5))) drop-shadow(0 4px 0 rgba(0,0,0,.4))}
-.player,.player.playing{animation:emerge .9s var(--ease) .15s both}
+h1{background-size:100% 220%;animation:flick 1.8s both,shimmer 7s ease-in-out 1.8s infinite alternate;filter:drop-shadow(0 0 calc(16px + var(--bass)*34px) var(--glowbass)) drop-shadow(0 4px 0 rgba(0,0,0,.4))}
+.player,.player.playing,.nowplaying{animation:emerge .9s var(--ease) .15s both}
 .panel{animation:emerge .9s var(--ease) .3s both}
 .track{animation:trackin .38s var(--ease) both;animation-delay:calc(var(--i,0)*28ms);transition:background .18s,box-shadow .18s,translate .18s var(--ease)}
 .track:hover{translate:4px 0}
@@ -22,39 +22,39 @@ h1{background-size:100% 220%;animation:flick 1.8s both,shimmer 7s ease-in-out 1.
 /* spotlight + tilt */
 .glass{background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),color-mix(in srgb,var(--blood-hi) 15%,transparent),transparent 60%),linear-gradient(160deg,color-mix(in srgb,var(--blood-dk) 42%,transparent),var(--glass))}
 .dialog{background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 85%,transparent),rgba(24,6,12,.96))}
-.player{transform:perspective(1100px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:box-shadow .08s linear,transform .35s var(--ease)}
-.player.playing{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 70px rgba(0,0,0,.62),0 0 calc(30px + var(--bass)*100px) calc(var(--bass)*12px) rgba(200,20,35,calc(.18 + var(--bass)*.5))}
+.player{transform:none;transition:box-shadow .08s linear}
+.player.playing{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 70px rgba(0,0,0,.62),0 0 calc(30px + var(--bass)*100px) calc(var(--bass)*12px) color-mix(in srgb,var(--blood) calc(18% + var(--bass)*50%),transparent)}
+.nowplaying{transition:box-shadow .2s linear}.nowplaying.playing{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 14px 40px rgba(0,0,0,.55),0 0 calc(24px + var(--bass)*70px) calc(var(--bass)*8px) color-mix(in srgb,var(--blood) calc(16% + var(--bass)*45%),transparent)}
 
 /* backdrop reacts */
-.bg::before{scale:calc(1 + var(--bass)*.14);animation:moonidle 9s ease-in-out infinite alternate;box-shadow:0 0 calc(90px + var(--bass)*80px) calc(36px + var(--bass)*34px) rgba(200,22,38,calc(.5 + var(--beat)*.35)),0 0 260px 110px rgba(150,10,25,.35)}
+.bg::before{scale:calc(1 + var(--bass)*.14);animation:moonidle 9s ease-in-out infinite alternate;box-shadow:0 0 calc(90px + var(--bass)*80px) calc(36px + var(--bass)*34px) color-mix(in srgb,var(--blood) calc(50% + var(--beat)*35%),transparent),0 0 260px 110px color-mix(in srgb,var(--blood-dk) 45%,transparent)}
 .fog.a,.fog.b{opacity:calc(.38 + var(--mid)*.42)}.fog.c{opacity:calc(.3 + var(--bass)*.5)}
 .yard{translate:0 calc(var(--bass)*-7px)}
-body::after{transform-origin:50% 100%;scale:1 calc(1 + var(--bass)*.3);filter:drop-shadow(0 -4px calc(14px + var(--bass)*30px) rgba(200,20,35,calc(.45 + var(--bass)*.4)))}
+body::after{transform-origin:50% 100%;scale:1 calc(1 + var(--bass)*.3);filter:drop-shadow(0 -4px calc(14px + var(--bass)*30px) color-mix(in srgb,var(--blood) calc(45% + var(--bass)*40%),transparent))}
 
 /* player reacts */
-.cover{scale:calc(1 + var(--bass)*.09);box-shadow:0 0 0 6px rgba(120,10,24,.5),0 0 0 calc(7px + var(--beat)*9px) rgba(255,110,115,calc(.3 + var(--beat)*.5)),0 16px 40px rgba(0,0,0,.7),0 0 calc(40px + var(--bass)*70px) rgba(200,20,35,calc(.3 + var(--bass)*.5))}
+.cover{scale:calc(1 + var(--bass)*.09);box-shadow:0 0 0 6px color-mix(in srgb,var(--blood-dk) 70%,transparent),0 0 0 calc(7px + var(--beat)*9px) color-mix(in srgb,var(--blood-hi) calc(30% + var(--beat)*50%),transparent),0 16px 40px rgba(0,0,0,.7),0 0 calc(40px + var(--bass)*70px) color-mix(in srgb,var(--blood) calc(30% + var(--bass)*50%),transparent)}
 .cover::before{content:"";position:absolute;inset:0;z-index:1;border-radius:50%;pointer-events:none;background:conic-gradient(from 20deg,transparent 0 20%,rgba(255,255,255,.14) 25%,transparent 30% 70%,rgba(255,255,255,.1) 75%,transparent 80%)}
-.title{text-shadow:0 2px 14px rgba(0,0,0,.6),0 0 calc(var(--beat)*26px) rgba(255,60,75,calc(var(--beat)*.9))}
-.cents{filter:drop-shadow(0 0 calc(10px + var(--mid)*26px) rgba(220,30,45,calc(.35 + var(--mid)*.5)))}
-.player.playing .iconbtn.primary{animation:none;scale:calc(1 + var(--beat)*.13);box-shadow:0 10px 30px rgba(150,10,25,.65),0 0 0 calc(6px + var(--beat)*16px) rgba(150,10,25,calc(.28 + var(--beat)*.3)),inset 0 1px 0 rgba(255,200,200,.4)}
-.visual{filter:none;height:128px;background:radial-gradient(ellipse at 50% 50%,rgba(120,10,24,.35),rgba(0,0,0,.75));box-shadow:inset 0 2px 10px #000,0 0 calc(var(--bass)*34px) rgba(220,30,45,calc(var(--bass)*.55))}
+.title{text-shadow:0 2px 14px rgba(0,0,0,.6),0 0 calc(var(--beat)*26px) color-mix(in srgb,var(--blood-hi) calc(var(--beat)*90%),transparent)}
+.cents{filter:drop-shadow(0 0 calc(10px + var(--mid)*26px) color-mix(in srgb,var(--blood) calc(35% + var(--mid)*50%),transparent))}
+.player.playing .iconbtn.primary{animation:none;scale:calc(1 + var(--beat)*.13);box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 80%,black),0 0 0 calc(6px + var(--beat)*16px) color-mix(in srgb,var(--accent) calc(28% + var(--beat)*30%),transparent),inset 0 1px 0 rgba(255,200,200,.4)}
+.visual{filter:none;height:128px;background:radial-gradient(ellipse at 50% 50%,color-mix(in srgb,var(--blood-dk) 55%,transparent),rgba(0,0,0,.75));box-shadow:inset 0 2px 10px #000,0 0 calc(var(--bass)*34px) color-mix(in srgb,var(--blood) calc(var(--bass)*55%),transparent)}
 
 /* sliders: filled track, reactive thumbs */
-.range::-webkit-slider-runnable-track,.progress::-webkit-slider-runnable-track{background:linear-gradient(90deg,#ff4a55,#b01020) left center/var(--p,0%) 100% no-repeat,linear-gradient(90deg,rgba(255,120,125,.32),rgba(255,120,125,.14))}
-.range::-moz-range-progress{height:5px;border-radius:99px;background:linear-gradient(90deg,#ff4a55,#b01020)}
-#seek::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(12px + var(--beat)*26px) rgba(255,50,65,.9)}
-.eqgrid label:nth-child(1) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--bass)*30px) rgba(255,50,65,.9)}
-.eqgrid label:nth-child(2) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--mid)*30px) rgba(255,50,65,.9)}
-.eqgrid label:nth-child(3) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--treb)*30px) rgba(255,50,65,.9)}
+.range::-webkit-slider-runnable-track,.progress::-webkit-slider-runnable-track{background:var(--trackfill) left center/var(--p,0%) 100% no-repeat,linear-gradient(90deg,rgba(255,120,125,.32),rgba(255,120,125,.14))}
+.range::-moz-range-progress{height:5px;border-radius:99px;background:var(--trackfill)}
+#seek::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(12px + var(--beat)*26px) color-mix(in srgb,var(--blood-hi) 85%,transparent)}
+.eqgrid label:nth-child(1) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--bass)*30px) color-mix(in srgb,var(--blood-hi) 85%,transparent)}
+.eqgrid label:nth-child(2) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--mid)*30px) color-mix(in srgb,var(--blood-hi) 85%,transparent)}
+.eqgrid label:nth-child(3) .range::-webkit-slider-thumb{box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 calc(10px + var(--treb)*30px) color-mix(in srgb,var(--blood-hi) 85%,transparent)}
 
 /* playlist: live level meter on the active row */
-.track.active{box-shadow:inset 0 0 0 1px rgba(255,110,120,calc(.35 + var(--beat)*.5)),0 6px 20px rgba(0,0,0,.4),0 0 calc(var(--bass)*26px) rgba(220,30,45,calc(var(--bass)*.5))}
+.track.active{box-shadow:inset 0 0 0 1px rgba(255,110,120,calc(.35 + var(--beat)*.5)),0 6px 20px rgba(0,0,0,.4),0 0 calc(var(--bass)*26px) color-mix(in srgb,var(--blood) calc(var(--bass)*50%),transparent)}
 .track.active .thumb{scale:calc(1 + var(--bass)*.1)}
-.is-playing .track.active::after{content:"";position:absolute;right:50px;top:50%;width:15px;height:18px;translate:0 -50%;background:linear-gradient(#ff5a64,#ff5a64) 0 100%/3px calc(15% + var(--bass)*85%) no-repeat,linear-gradient(#ff5a64,#ff5a64) 6px 100%/3px calc(15% + var(--mid)*85%) no-repeat,linear-gradient(#ff5a64,#ff5a64) 12px 100%/3px calc(15% + var(--treb)*85%) no-repeat}
+.is-playing .track.active::after{content:"";position:absolute;right:50px;top:50%;width:15px;height:18px;translate:0 -50%;background:linear-gradient(var(--meter),var(--meter)) 0 100%/3px calc(15% + var(--bass)*85%) no-repeat,linear-gradient(var(--meter),var(--meter)) 6px 100%/3px calc(15% + var(--mid)*85%) no-repeat,linear-gradient(var(--meter),var(--meter)) 12px 100%/3px calc(15% + var(--treb)*85%) no-repeat}
 
 /* drop-anywhere veil + help button */
 .veil{position:fixed;inset:0;z-index:8;display:grid;place-items:center;background:rgba(40,2,8,.72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);font:600 clamp(32px,6vw,64px) "Cormorant Garamond",Georgia,serif;color:#ffd9d9;opacity:0;pointer-events:none;transition:opacity .2s}
-.veil.on{opacity:1}.veil span{padding:36px 54px;border:2px dashed #ff3b47;border-radius:28px;box-shadow:0 0 60px rgba(220,30,45,.6);animation:pulsebox 1.2s ease-in-out infinite}
-.helpbtn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:6;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,120,125,.35);background:rgba(40,8,16,.85);color:var(--ink);font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.6)}
-.helpbtn:hover{box-shadow:0 6px 18px rgba(0,0,0,.6),0 0 20px rgba(255,50,65,.6)}
+.veil.on{opacity:1}.veil span{padding:36px 54px;border:2px dashed var(--blood-hi);border-radius:28px;box-shadow:0 0 60px color-mix(in srgb,var(--blood) 60%,transparent);animation:pulsebox 1.2s ease-in-out infinite}
+
 @media(prefers-reduced-motion:reduce){.bg::before,.cover,.player.playing .iconbtn.primary{scale:1}.player{transform:none}}
