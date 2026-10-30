@@ -208,6 +208,7 @@
       vizMode: ["spectrum", "bars", "scope", "circle"].includes(s.vizMode) ? s.vizMode : "spectrum",
       vizFx: s.vizFx === undefined ? true : !!s.vizFx,
       crossfade: clamp(+s.crossfade || 0, 0, 12),
+      beatmatch: !!s.beatmatch,
       resume: s.resume === undefined ? true : !!s.resume,
       theme: s.theme === "light" ? "light" : "dark",
       accentHue: clamp(Math.round(+s.accentHue || 355), 0, 360),
@@ -367,6 +368,15 @@
   /* Equal-power crossfade curve for x ∈ [0,1]. cos/sin pair keeps summed power flat. */
   const xfadeGain = (x, out) => { const t = clamp(x, 0, 1); return out ? Math.cos(t * Math.PI / 2) : Math.sin(t * Math.PI / 2); };
 
+  /* Pick the best usable record from an LRCLIB /get or /search JSON response.
+     Pure so it can be unit-tested without fetch(). Never throws on garbage input. */
+  function lrcPick(json) {
+    if (!json) return null;
+    const arr = Array.isArray(json) ? json : (typeof json === "object" ? [json] : []);
+    for (const rec of arr) { const txt = lrcFromRecord(rec); if (txt) return txt; }
+    return null;
+  }
+
   /* ---------- queue semantics ---------- */
   function makeQueue() { return []; }
   /* Queue semantics: the playback queue is a list of upcoming tracks.
@@ -414,7 +424,7 @@
     clamp, centsToRatio, ratioToCents, computePlayback, freqToNote, hashFileWith,
     detectFormats, fileAccepted, parseLrc, validateBackup, sanitizeSettings, DEFAULT_SETTINGS,
     makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES, sha256Hex,
-    lrcSyncedUrl, lrcSearchUrl, lrcFromRecord, estimateBpm, LRCLIB_BASE,
+    lrcSyncedUrl, lrcSearchUrl, lrcFromRecord, lrcPick, estimateBpm, LRCLIB_BASE,
     planBeatmatch, xfadeGain,
   };
 })(typeof window !== "undefined" ? window : globalThis);
