@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script>try{var m=matchMedia("(max-width:900px),(pointer:coarse)").matches||(navigator.hardwareConcurrency||8)<=4;if(m)document.documentElement.classList.add("lite")}catch(e){}</script>
+<script>try{var d=document.documentElement,m=matchMedia("(max-width:900px),(pointer:coarse)").matches||(navigator.hardwareConcurrency||8)<=4;if(m)d.classList.add("lite");if(matchMedia("(min-width:901px)").matches)d.classList.add("appshell")}catch(e){}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#d9dbde">
 <meta name="description" content="Detune — a quiet, glassy music player for pitch, tempo and atmosphere.">
@@ -12,6 +12,9 @@
 <title>Detune — a quieter kind of listening</title>
 <style>
 :root{color-scheme:dark;--ink:#f4e8e7;--muted:#c4a6a9;--edge:rgba(255,120,125,.2);--glass:rgba(30,9,15,.62);--blood:#c4182a;--blood-hi:#ff3b47;--blood-dk:#6b0912;--accent:#a8101f;--focus:#ff7a82;--pool0:#c2162a;--pool1:#8a0b17;--pool2:#2a0308;--moon:#d02a33;--fog:#7a0e1b;--edge-soft:rgba(255,110,115,.18);--tint-strong:rgba(150,18,34,.7);--tint-soft:rgba(220,30,45,.25);--glow:rgba(220,30,45,.4);--glow-hi:rgba(255,60,75,.8);--grad-a:#fff2ef;--grad-b:#ff4a55;--thumb-a:#ff8a92;--thumb-b:#d62231;--shadow:0 26px 70px rgba(0,0,0,.62),0 2px 8px rgba(0,0,0,.4);--ease:cubic-bezier(.2,.8,.2,1)}
+/* Theme-derived channels (all color-mix over var(--blood) so the album-cover theme retints
+   them too — extras.js only overrides --blood/--blood-hi/--blood-dk/--accent/--focus). */
+:root{--on-accent:#ffeceb;--rip:color-mix(in srgb,var(--blood-hi) 60%,transparent);--beatring:color-mix(in srgb,var(--blood-hi) 45%,transparent);--glowbass:color-mix(in srgb,var(--blood) 55%,transparent);--meter:var(--blood-hi);--iconacc:var(--blood-hi);--trackfill:linear-gradient(90deg,var(--blood-hi),var(--accent));--btnbg:radial-gradient(circle at 35% 28%,var(--blood-hi),var(--blood) 45%,var(--blood-dk))}
 *{box-sizing:border-box}
 html{scroll-padding-top:20px}
 body{margin:0;min-height:100vh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);color:var(--ink);font:400 15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:radial-gradient(900px 520px at 80% -8%,color-mix(in srgb,var(--blood) 45%,transparent),transparent 65%),radial-gradient(700px 500px at 5% 40%,color-mix(in srgb,var(--blood-dk) 60%,transparent),transparent 70%),linear-gradient(170deg,color-mix(in srgb,var(--pool2) 70%,black),#0a0406 55%,#050203);background-attachment:fixed;overflow-x:hidden;-webkit-font-smoothing:antialiased}
@@ -32,10 +35,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 @keyframes drift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(50px,-30px,0) scale(1.14)}}
 .yard{position:absolute;bottom:0;width:100%;height:160px;opacity:.85;-webkit-mask-image:linear-gradient(to top,#000 45%,transparent);mask-image:linear-gradient(to top,#000 45%,transparent)}
 .yard g{fill:#030102}
-body::after{content:"";position:fixed;left:0;bottom:0;width:100%;height:90px;z-index:-1;pointer-events:none;opacity:.95;background:linear-gradient(180deg,var(--pool0) 0,var(--pool1) 25%,var(--pool2) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%2790%27 viewBox=%270 0 800 90%27%3E%3Cpath fill=%27black%27 d=%27M0 30 Q100 14 200 30 T400 30 T600 30 T800 30 V90 H0 Z%27/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%2790%27 viewBox=%270 0 800 90%27%3E%3Cpath fill=%27black%27 d=%27M0 30 Q100 14 200 30 T400 30 T600 30 T800 30 V90 H0 Z%27/%3E%3C/svg%3E");-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;-webkit-mask-position:bottom left;mask-position:bottom left;-webkit-mask-size:800px 90px;mask-size:800px 90px;animation:slosh 20s linear infinite;filter:drop-shadow(0 -4px 14px rgba(200,20,35,.45))}
+body::after{content:"";position:fixed;left:0;bottom:0;width:100%;height:90px;z-index:-1;pointer-events:none;opacity:.95;background:linear-gradient(180deg,var(--pool0) 0,var(--pool1) 25%,var(--pool2) 100%);-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%2790%27 viewBox=%270 0 800 90%27%3E%3Cpath fill=%27black%27 d=%27M0 30 Q100 14 200 30 T400 30 T600 30 T800 30 V90 H0 Z%27/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27800%27 height=%2790%27 viewBox=%270 0 800 90%27%3E%3Cpath fill=%27black%27 d=%27M0 30 Q100 14 200 30 T400 30 T600 30 T800 30 V90 H0 Z%27/%3E%3C/svg%3E");-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;-webkit-mask-position:bottom left;mask-position:bottom left;-webkit-mask-size:800px 90px;mask-size:800px 90px;animation:slosh 20s linear infinite;filter:drop-shadow(0 -4px 14px color-mix(in srgb,var(--blood) 45%,transparent))}
 @keyframes slosh{to{transform:translateX(800px)}}
 
-main{width:min(1160px,100%);margin:auto;padding:54px 22px calc(110px + env(safe-area-inset-bottom))}
+main{width:min(1160px,100%);margin:auto;padding:calc(54px + env(safe-area-inset-top)) 22px calc(110px + env(safe-area-inset-bottom))}
+/* The whole app is one fullscreen glass container (see fit.css/.appshell): the backdrop and
+   the bottom blood pool show through its padding. The pool is a CSS gradient driven by
+   --pool0/1/2 so the album-cover theme retints it too — no more hue-rotate filter hack
+   (filters can't reach a fixed pseudo-element, which is why it used to stay red). */
+html.appshell main{padding:calc(12px + env(safe-area-inset-top)) 18px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(160deg,color-mix(in srgb,var(--blood-dk) 30%,transparent),rgba(16,5,10,.5));border:1px solid color-mix(in srgb,var(--ink) 12%,transparent);border-radius:28px;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ink) 18%,transparent),0 30px 90px rgba(0,0,0,.6);-webkit-backdrop-filter:blur(34px) saturate(170%);backdrop-filter:blur(34px) saturate(170%)}
 h1{font:600 clamp(54px,9.5vw,98px)/.88 "Cormorant Garamond",Georgia,serif;letter-spacing:-.03em;margin:0;background:linear-gradient(180deg,var(--grad-a) 18%,var(--grad-b) 95%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px var(--glow)) drop-shadow(0 4px 0 rgba(0,0,0,.4))}
 .sub{color:var(--muted);margin:16px 0 34px;font-size:16px;max-width:46ch}
 .layout{display:grid;grid-template-columns:minmax(300px,430px) minmax(0,1fr);gap:26px;align-items:start}
@@ -45,9 +53,11 @@ h1{font:600 clamp(54px,9.5vw,98px)/.88 "Cormorant Garamond",Georgia,serif;letter
 
 /* ---------- player: tombstone arch ---------- */
 .player{border-radius:34px;padding:50px 28px 28px;text-align:center;min-width:0;transition:box-shadow .6s}
+/* now a grid column card (see player.css/fit.css) — was a fixed floating bar */
+html.appshell .player{position:static;width:auto;left:auto;right:auto;bottom:auto;margin:0}
 .player>*{position:relative;z-index:1}
 .player.playing{animation:breathe 4.6s ease-in-out infinite}
-@keyframes breathe{0%,100%{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 70px rgba(0,0,0,.62),0 0 0 0 rgba(200,20,35,0)}50%{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 80px rgba(0,0,0,.65),0 0 90px 8px rgba(200,20,35,.5)}}
+@keyframes breathe{0%,100%{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 70px rgba(0,0,0,.62),0 0 0 0 transparent}50%{box-shadow:inset 0 1px 0 rgba(255,170,170,.2),0 26px 80px rgba(0,0,0,.65),0 0 90px 8px color-mix(in srgb,var(--blood) 50%,transparent)}}
 .cover{position:relative;width:140px;height:140px;margin:0 auto 18px;border-radius:50%;overflow:hidden;display:grid;place-items:center;font-size:34px;color:rgba(255,200,200,.55);background:repeating-radial-gradient(circle at 50% 50%,#1b0509 0 3px,#0e0305 3px 5px),#0e0305;border:1px solid rgba(255,120,125,.35);box-shadow:0 0 0 6px rgba(120,10,24,.5),0 0 0 7px rgba(255,110,115,.3),0 16px 40px rgba(0,0,0,.7),0 0 40px rgba(200,20,35,.3)}
 .cover::after{content:"";position:absolute;inset:0;margin:auto;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle,var(--blood-hi) 25%,var(--accent) 100%);box-shadow:0 0 0 3px rgba(0,0,0,.6),0 0 14px var(--glow-hi)}
 .cover img{width:100%;height:100%;object-fit:cover}
@@ -59,8 +69,8 @@ h1{font:600 clamp(54px,9.5vw,98px)/.88 "Cormorant Garamond",Georgia,serif;letter
 .transport{display:flex;justify-content:center;align-items:center;gap:15px;margin:14px 0 22px}
 .iconbtn{width:48px;height:48px;border:1px solid rgba(255,120,125,.28);border-radius:50%;background:linear-gradient(180deg,rgba(90,22,34,.7),rgba(40,10,17,.8));box-shadow:0 5px 14px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,170,170,.18);display:grid;place-items:center}
 .iconbtn:hover{border-color:color-mix(in srgb,var(--focus) 60%,transparent);box-shadow:0 8px 22px rgba(0,0,0,.55),0 0 18px var(--glow);transform:translateY(-1px)}
-.iconbtn.primary{width:66px;height:66px;color:#fff;background:radial-gradient(circle at 35% 28%,#ff5560,#c4182a 45%,#7d0b16);border-color:rgba(255,160,165,.45);box-shadow:0 10px 30px rgba(150,10,25,.65),0 0 0 6px rgba(150,10,25,.28),inset 0 1px 0 rgba(255,200,200,.4)}
-.iconbtn.primary:hover{box-shadow:0 12px 36px rgba(190,16,32,.75),0 0 0 8px rgba(200,20,35,.3),inset 0 1px 0 rgba(255,200,200,.5)}
+.iconbtn.primary{width:66px;height:66px;color:#fff;background:var(--btnbg);border-color:color-mix(in srgb,var(--blood-hi) 55%,transparent);box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 80%,black),0 0 0 6px color-mix(in srgb,var(--accent) 28%,transparent),inset 0 1px 0 rgba(255,200,200,.4)}
+.iconbtn.primary:hover{box-shadow:0 12px 36px color-mix(in srgb,var(--blood) 75%,black),0 0 0 8px color-mix(in srgb,var(--blood) 30%,transparent),inset 0 1px 0 rgba(255,200,200,.5)}
 .player.playing .iconbtn.primary{animation:heartbeat 1.5s ease-in-out infinite}
 @keyframes heartbeat{0%,48%,100%{transform:scale(1)}10%{transform:scale(1.07)}20%{transform:scale(1)}30%{transform:scale(1.1)}}
 .iconbtn svg{width:20px;height:20px;fill:currentColor}
@@ -71,16 +81,16 @@ h1{font:600 clamp(54px,9.5vw,98px)/.88 "Cormorant Garamond",Georgia,serif;letter
 .progress{height:7px}
 .range::-webkit-slider-runnable-track{height:5px;border-radius:99px;background:linear-gradient(90deg,rgba(255,120,125,.32),rgba(255,120,125,.14));box-shadow:inset 0 1px 3px rgba(0,0,0,.7),0 1px 0 rgba(255,150,150,.12)}
 .range::-moz-range-track{height:5px;border-radius:99px;background:linear-gradient(90deg,rgba(255,120,125,.32),rgba(255,120,125,.14));box-shadow:inset 0 1px 3px rgba(0,0,0,.7)}
-.range::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;margin-top:-7px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:radial-gradient(circle at 32% 28%,var(--thumb-a),var(--blood-hi) 48%,var(--blood-dk));border:1px solid rgba(255,190,190,.6);box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 12px rgba(220,30,45,.6);transition:transform .15s var(--ease),box-shadow .15s}
-.range::-moz-range-thumb{width:17px;height:17px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:radial-gradient(circle at 32% 28%,var(--thumb-a),var(--blood-hi) 48%,var(--blood-dk));border:1px solid rgba(255,190,190,.6);box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 12px rgba(220,30,45,.6)}
-.range:hover::-webkit-slider-thumb,.range:active::-webkit-slider-thumb{transform:rotate(-45deg) scale(1.2);box-shadow:0 3px 12px rgba(0,0,0,.7),0 0 20px rgba(255,50,65,.85)}
-.range:active::-moz-range-thumb{box-shadow:0 3px 12px rgba(0,0,0,.7),0 0 20px rgba(255,50,65,.85)}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:19px;height:19px;margin-top:-7px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:radial-gradient(circle at 32% 28%,var(--thumb-a),var(--blood-hi) 48%,var(--blood-dk));border:1px solid rgba(255,190,190,.6);box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 12px color-mix(in srgb,var(--blood) 60%,transparent);transition:transform .15s var(--ease),box-shadow .15s}
+.range::-moz-range-thumb{width:17px;height:17px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);background:radial-gradient(circle at 32% 28%,var(--thumb-a),var(--blood-hi) 48%,var(--blood-dk));border:1px solid rgba(255,190,190,.6);box-shadow:0 2px 10px rgba(0,0,0,.7),0 0 12px color-mix(in srgb,var(--blood) 60%,transparent)}
+.range:hover::-webkit-slider-thumb,.range:active::-webkit-slider-thumb{transform:rotate(-45deg) scale(1.2);box-shadow:0 3px 12px rgba(0,0,0,.7),0 0 20px color-mix(in srgb,var(--blood-hi) 85%,transparent)}
+.range:active::-moz-range-thumb{box-shadow:0 3px 12px rgba(0,0,0,.7),0 0 20px color-mix(in srgb,var(--blood-hi) 85%,transparent)}
 input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 
 .section{border-top:1px solid var(--edge-soft);box-shadow:0 -1px 0 rgba(0,0,0,.4);margin-top:20px;padding-top:17px;text-align:left}
 .section h3{font:600 24px "Cormorant Garamond",Georgia,serif;margin:0 0 8px}
 .readout{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.cents{font:600 52px/1 "Cormorant Garamond",Georgia,serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em;background:linear-gradient(180deg,var(--grad-a) 15%,var(--grad-b));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px rgba(220,30,45,.45))}
+.cents{font:600 52px/1 "Cormorant Garamond",Georgia,serif;font-variant-numeric:tabular-nums;letter-spacing:-.02em;background:linear-gradient(180deg,var(--grad-a) 15%,var(--grad-b));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 14px color-mix(in srgb,var(--blood) 45%,transparent))}
 .cents .small{-webkit-text-fill-color:var(--muted);font:400 13px -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:0}
 .small{font-size:12px;color:var(--muted)}
 .fieldrow{display:flex;align-items:center;gap:8px;margin:8px 0}
@@ -91,7 +101,7 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 .toolbar input[type=search]::placeholder{color:rgba(196,166,169,.6)}
 .chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:12px}
 .chip,.secondary{border:1px solid rgba(255,120,125,.26);background:linear-gradient(180deg,rgba(90,22,34,.6),rgba(42,10,18,.7));border-radius:99px;padding:7px 13px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,170,170,.14)}
-.chip:hover,.secondary:hover{border-color:color-mix(in srgb,var(--focus) 65%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--blood) 70%,transparent),color-mix(in srgb,var(--blood-dk) 80%,transparent));box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 16px rgba(220,30,45,.35);transform:translateY(-1px)}
+.chip:hover,.secondary:hover{border-color:color-mix(in srgb,var(--focus) 65%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--blood) 70%,transparent),color-mix(in srgb,var(--blood-dk) 80%,transparent));box-shadow:0 6px 18px rgba(0,0,0,.5),0 0 16px color-mix(in srgb,var(--blood) 35%,transparent);transform:translateY(-1px)}
 .eqgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .eqgrid label{font-size:12px;color:var(--muted);text-align:center}
 .eqgrid input{display:block;width:100%}
@@ -115,7 +125,7 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 .track{position:relative;display:grid;grid-template-columns:42px minmax(0,1fr) auto 34px;gap:11px;align-items:center;padding:8px 10px;border-radius:15px;min-height:62px;cursor:pointer;transition:background .18s,box-shadow .18s}
 .track:hover{background:rgba(150,18,34,.22)}
 .track.active{background:linear-gradient(90deg,rgba(170,16,34,.42),rgba(90,10,22,.2));box-shadow:inset 0 0 0 1px rgba(255,110,120,.4),0 6px 20px rgba(0,0,0,.4)}
-.track.active::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;width:3px;border-radius:99px;background:linear-gradient(180deg,#ff6a72,#b01020);box-shadow:0 0 14px #ff2c3c}
+.track.active::before{content:"";position:absolute;left:-1px;top:12px;bottom:12px;width:3px;border-radius:99px;background:var(--trackfill);box-shadow:0 0 14px var(--blood-hi)}
 .track.active .meta strong{font-weight:600}
 .thumb{width:42px;height:42px;border-radius:10px;overflow:hidden;display:grid;place-items:center;background:linear-gradient(145deg,#3a0d16,#12050a);color:rgba(255,190,190,.6);box-shadow:0 3px 10px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,120,125,.2)}
 .thumb img{width:100%;height:100%;object-fit:cover}
@@ -142,7 +152,7 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 .dialog h2{font:600 32px "Cormorant Garamond",Georgia,serif;margin:0 0 12px}
 .dialog li{margin:7px 0}
 .dialog b{display:inline-block;min-width:3.2em;padding:1px 7px;margin-right:4px;border-radius:7px;background:#220810;color:#ffd9d9;box-shadow:0 2px 0 #7a0a15,0 0 0 1px rgba(255,120,125,.3);font-weight:600;font-size:13px;text-align:center}
-.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;max-width:calc(100vw - 28px);padding:11px 18px;border-radius:99px;display:none;background:rgba(22,5,10,.94);color:#ffeceb;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 14px 36px rgba(0,0,0,.6),0 0 0 1px rgba(255,90,100,.5),0 0 24px rgba(200,20,35,.4);animation:rise .3s var(--ease)}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:9;max-width:calc(100vw - 28px);padding:11px 18px;border-radius:99px;display:none;background:rgba(22,5,10,.94);color:#ffeceb;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 14px 36px rgba(0,0,0,.6),0 0 0 1px color-mix(in srgb,var(--blood-hi) 50%,transparent),0 0 24px color-mix(in srgb,var(--blood) 40%,transparent);animation:rise .3s var(--ease)}
 @keyframes rise{from{opacity:0;transform:translate(-50%,10px)}}
 .visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
@@ -163,6 +173,9 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <section class="glass stage" aria-label="Visualizer">
 <!-- <div class="brand"><h1>Detune</h1><p class="sub">A quieter kind of listening. Drop a song, then bend its atmosphere.</p></div> -->
 <canvas class="visual" id="visual" height="94" aria-label="Live audio visualizer"></canvas>
+<button class="fab helpbtn" id="openShortcuts" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">?</button>
+<button class="fab" id="lyricsBtn" aria-expanded="false" title="Lyrics (L)" aria-label="Lyrics"><i class="fa-solid fa-microphone-lines" aria-hidden="true"></i></button>
+<button class="fab" id="themeBtn" aria-pressed="false" title="Match the album cover colours" aria-label="Match album cover colours"><i class="fa-solid fa-palette" aria-hidden="true"></i></button>
 </section>
 <div class="layout">
 <section class="glass panel library" aria-label="Playlist library">
@@ -179,6 +192,18 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <ul class="tracks" id="trackList" aria-label="Tracks"></ul>
 <div class="foot"><button class="secondary" id="exportWav"><i class="fa-solid fa-file-audio" aria-hidden="true"></i>Export WAV</button><button class="secondary" id="exportBackup"><i class="fa-solid fa-download" aria-hidden="true"></i>Backup</button><button class="secondary" id="importBackup"><i class="fa-solid fa-upload" aria-hidden="true"></i>Restore</button><input id="backupFile" type="file" accept="application/json,.json" hidden><span class="storage" id="storage">Checking local storage…</span></div>
 </section>
+<aside class="glass nowplaying" aria-label="Now playing">
+<div class="np"><div class="cover" id="cover" aria-hidden="true">♫</div><div class="npmeta"><h2 class="title" id="title">Nothing playing</h2><p class="artist" id="artist">Add a song to begin</p></div></div>
+<div class="center"><div class="transport">
+<button class="iconbtn" id="skipBack" aria-label="Skip back 5 seconds" title="Skip back 5s (-5s)"><i class="fa-solid fa-backward-fast" aria-hidden="true"></i></button>
+<button class="iconbtn" id="prev" aria-label="Previous track" title="Previous (←)"><i class="fa-solid fa-backward-step" aria-hidden="true"></i></button>
+<button class="iconbtn primary" id="play" aria-label="Play" title="Play or pause (Space)"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
+<button class="iconbtn" id="next" aria-label="Next track" title="Next (→)"><i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
+<button class="iconbtn" id="skipFwd" aria-label="Skip forward 5 seconds" title="Skip forward 5s (+5s)"><i class="fa-solid fa-forward-fast" aria-hidden="true"></i></button>
+<label class="sleep small" for="sleepMin" title="Pause playback after a while"><i class="fa-solid fa-moon" aria-hidden="true"></i>Sleep<input class="number" id="sleepMin" type="number" min="0" max="240" step="5" value="0" aria-label="Sleep timer in minutes">min</label>
+</div><div class="scrub"><span id="currentTime">0:00</span><input class="range" id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek through track"><span id="duration">0:00</span></div></div>
+<div class="vol"><i class="fa-solid fa-volume-high spk" aria-hidden="true"></i><input id="volume" class="range" type="range" min="0" max="1" step=".01" value=".8" aria-label="Volume"><label class="toggleline"><input id="mute" type="checkbox"> Mute</label><label class="sleep small" for="skipSec">Skip<input class="number" id="skipSec" type="number" min="1" max="60" step="1" value="5" aria-label="Skip interval in seconds">s</label></div>
+</aside>
 <aside class="glass sound" aria-label="Sound controls">
 <div class="section pitch"><h3><i class="fa-solid fa-sliders" aria-hidden="true"></i>Pitch &amp; tempo</h3>
 <div class="readout"><span class="cents"><span id="centsText">0</span><span class="small"> cents</span></span><span class="small" id="pitchNote">A₄ = 440 Hz</span></div>
@@ -203,22 +228,11 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 </aside>
 </div>
 </main>
-<section class="glass player" aria-label="Audio player">
-<div class="np"><div class="cover" id="cover" aria-hidden="true">♫</div><div class="npmeta"><h2 class="title" id="title">Nothing playing</h2><p class="artist" id="artist">Add a song to begin</p></div></div>
-<div class="center"><div class="transport">
-<button class="iconbtn" id="skipBack" aria-label="Skip back 5 seconds" title="Skip back 5s (-5s)"><i class="fa-solid fa-backward-fast" aria-hidden="true"></i></button>
-<button class="iconbtn" id="prev" aria-label="Previous track" title="Previous (←)"><i class="fa-solid fa-backward-step" aria-hidden="true"></i></button>
-<button class="iconbtn primary" id="play" aria-label="Play" title="Play or pause (Space)"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
-<button class="iconbtn" id="next" aria-label="Next track" title="Next (→)"><i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
-<button class="iconbtn" id="skipFwd" aria-label="Skip forward 5 seconds" title="Skip forward 5s (+5s)"><i class="fa-solid fa-forward-fast" aria-hidden="true"></i></button>
-<label class="sleep small" for="sleepMin" title="Pause playback after a while"><i class="fa-solid fa-moon" aria-hidden="true"></i>Sleep<input class="number" id="sleepMin" type="number" min="0" max="240" step="5" value="0" aria-label="Sleep timer in minutes">min</label>
-</div><div class="scrub"><span id="currentTime">0:00</span><input class="range" id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek through track"><span id="duration">0:00</span></div></div>
-<div class="vol"><i class="fa-solid fa-volume-high spk" aria-hidden="true"></i><input id="volume" class="range" type="range" min="0" max="1" step=".01" value=".8" aria-label="Volume"><label class="toggleline"><input id="mute" type="checkbox"> Mute</label><label class="sleep small" for="skipSec">Skip<input class="number" id="skipSec" type="number" min="1" max="60" step="1" value="5" aria-label="Skip interval in seconds">s</label></div>
-</section>
+
 <div class="modal" id="shortcuts" role="dialog" aria-modal="true" aria-labelledby="shortcutTitle"><div class="glass dialog"><h2 id="shortcutTitle">Keyboard shortcuts</h2><ul><li><b>Space</b> — play / pause</li><li><b>← / →</b> — seek 5 seconds</li><li><b>[ / ]</b> — pitch down / up 1 semitone</li><li><b>0</b> — reset pitch</li><li><b>M</b> — mute</li><li><b>S</b> — shuffle</li><li><b>R</b> — cycle repeat mode</li></ul><button class="secondary wide" id="closeShortcuts">Close</button></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<button class="fab" id="themeBtn" aria-pressed="false" title="Match the album cover colours" aria-label="Match album cover colours"><i class="fa-solid fa-palette" aria-hidden="true"></i></button>
-<button class="fab" id="lyricsBtn" aria-expanded="false" title="Lyrics (L)" aria-label="Lyrics"><i class="fa-solid fa-microphone-lines" aria-hidden="true"></i></button>
+
+
 <section class="glass lyrics" id="lyrics" aria-label="Lyrics" hidden>
 <div class="lyrhead"><h2><i class="fa-solid fa-microphone-lines" aria-hidden="true"></i><span id="lyrTitle">Lyrics</span></h2><div class="lyrtools"><button class="secondary" id="lyrImport"><i class="fa-solid fa-file-import" aria-hidden="true"></i>Import</button><button class="secondary icon" id="lyrEdit" title="Paste or edit" aria-label="Paste or edit lyrics"><i class="fa-solid fa-pen" aria-hidden="true"></i></button><button class="secondary icon" id="lyrClear" title="Remove lyrics" aria-label="Remove lyrics"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button><button class="secondary icon" id="lyrClose" title="Close" aria-label="Close lyrics"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div></div>
 <input id="lyrFile" type="file" accept=".lrc,.txt,text/plain" hidden>

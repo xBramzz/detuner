@@ -1,15 +1,16 @@
-/* Detune player layout: stage (visualizer) + library + sound panel, with a fixed now-playing bar. Layout only. */
-main{width:min(1280px,100%);padding:26px 22px 150px}
+/* Detune player layout: fullscreen app shell — stage (visualizer) on top, then three columns:
+   Now Playing | Library | Sound. No fixed overlays; nothing overlaps anything. Layout only. */
+main{width:min(1440px,100%);padding:26px 22px 20px}
 header.topbar,header{display:flex;align-items:baseline;gap:18px;margin-bottom:18px}
 h1{font-size:clamp(40px,5vw,58px);line-height:1}
 .sub{margin:0;font-size:15px}
 .library::before,.sound::before,.player::before,.library::after,.sound::after,.player::after,.stage::after{display:none}
 .stage{border-radius:22px;overflow:hidden;margin-bottom:22px}
 .stage::before{opacity:.6}
-.visual{width:100%;height:170px;margin:0;border-radius:0;display:block;background:radial-gradient(ellipse at 50% 50%,rgba(120,10,24,.3),rgba(0,0,0,.7))}
+.visual{width:100%;height:170px;margin:0;border-radius:0;display:block;background:radial-gradient(ellipse at 50% 50%,color-mix(in srgb,var(--blood-dk) 45%,transparent),rgba(0,0,0,.7))}
 .layout{grid-template-columns:minmax(0,1fr) 360px;gap:22px}
 .panel,.sound{border-radius:22px}
-.sound{padding:22px;text-align:left;position:sticky;top:18px;max-height:calc(100vh - 150px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(196,24,42,.6) transparent}
+.sound{padding:22px;text-align:left;position:sticky;top:18px;max-height:calc(100vh - 150px);overflow:auto;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--blood) 60%,transparent) transparent}
 .sound>*{position:relative;z-index:1}
 .sound .section:first-child{border:0;margin-top:0;padding-top:0;box-shadow:none}
 .section h3{font-size:22px}
@@ -19,32 +20,31 @@ h1{font-size:clamp(40px,5vw,58px);line-height:1}
 .track+.track{box-shadow:0 -1px 0 rgba(255,110,115,.08)}
 .heading{margin-top:16px}
 
-/* now-playing bar */
-.player,.player.playing{position:fixed;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom));z-index:6;margin-inline:auto;width:min(1236px,calc(100% - 28px));display:grid;grid-template-columns:minmax(200px,1fr) minmax(320px,1.7fr) minmax(190px,1fr);align-items:center;gap:22px;padding:11px 22px;border-radius:22px;text-align:left;animation:none}
-.player{transform:none}
-.np{display:flex;align-items:center;gap:14px;min-width:0}
-.npmeta{min-width:0}
-.cover{width:58px;height:58px;margin:0;flex:none;font-size:20px;box-shadow:0 0 0 3px rgba(120,10,24,.5),0 0 0 calc(4px + var(--beat)*6px) rgba(255,110,115,calc(.3 + var(--beat)*.5)),0 8px 20px rgba(0,0,0,.7),0 0 calc(18px + var(--bass)*40px) rgba(200,20,35,calc(.3 + var(--bass)*.5))}
-.cover::after{width:9px;height:9px;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 8px rgba(255,60,75,.8)}
-.title{font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.artist{margin:2px 0 0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.center{display:grid;gap:4px;justify-items:center;min-width:0}
-.transport{margin:0;gap:14px}
-.iconbtn{width:38px;height:38px}
-.iconbtn.primary{width:50px;height:50px;box-shadow:0 8px 22px rgba(150,10,25,.6),inset 0 1px 0 rgba(255,200,200,.4)}
+/* now playing: a normal column card inside the app grid (was a floating fixed bar that overlapped
+   the pitch/tempo + playlist panels). Stacks cover -> title -> transport -> scrub -> volume. */
+.player,.player.playing{position:static;width:auto;margin:0;transform:none;animation:none}
+.nowplaying{border-radius:22px;padding:18px 16px;display:flex;flex-direction:column;gap:14px;text-align:center;min-width:0}
+.np{display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0}
+.npmeta{min-width:0;max-width:100%}
+.cover{width:96px;height:96px;margin:0;flex:none;font-size:26px;box-shadow:0 0 0 3px color-mix(in srgb,var(--blood-dk) 70%,transparent),0 0 0 calc(4px + var(--beat)*6px) color-mix(in srgb,var(--blood-hi) calc(30% + var(--beat)*50%),transparent),0 8px 20px rgba(0,0,0,.7),0 0 calc(18px + var(--bass)*40px) color-mix(in srgb,var(--blood) calc(30% + var(--bass)*50%),transparent)}
+.cover::after{width:10px;height:10px;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 8px color-mix(in srgb,var(--blood-hi) 80%,transparent)}
+.title{font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.artist{margin:2px 0 0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.center{display:grid;gap:8px;justify-items:center;min-width:0;width:100%}
+.transport{margin:0;gap:12px}
+.iconbtn{width:40px;height:40px}
+.iconbtn.primary{width:56px;height:56px;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 75%,black),inset 0 1px 0 rgba(255,200,200,.4)}
 .scrub{display:flex;align-items:center;gap:10px;width:100%;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .scrub .range{flex:1;margin:0;min-width:0}
-.vol{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.vol{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
 .vol .range{width:min(130px,100%);margin:0}
 .spk{width:20px;height:20px;color:var(--muted);flex:none}
-.vol .toggleline{padding:5px 10px;border:1px solid rgba(255,120,125,.26);border-radius:99px;font-size:12px}
-.vol .toggleline:has(input:checked){border-color:var(--blood-hi);color:var(--ink);background:rgba(150,18,34,.4)}
-.toast{bottom:calc(104px + env(safe-area-inset-bottom))}
-.helpbtn{top:16px;bottom:auto}
+.vol .toggleline{padding:5px 10px;border:1px solid color-mix(in srgb,var(--blood-hi) 30%,transparent);border-radius:99px;font-size:12px}
+.vol .toggleline:has(input:checked){border-color:var(--blood-hi);color:var(--ink);background:color-mix(in srgb,var(--blood) 40%,transparent)}
+.toast{bottom:calc(24px + env(safe-area-inset-bottom))}
 
 @media(max-width:900px){
- main{padding:22px 14px 190px}.layout{grid-template-columns:1fr}.sound{position:static;max-height:none}.sub{display:none}.visual{height:120px}
- .player,.player.playing{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:10px 14px;width:calc(100% - 16px);bottom:calc(8px + env(safe-area-inset-bottom))}
- .center{display:contents}.transport{gap:8px}.scrub{grid-column:1/-1;order:3}.vol{display:none}.cover{width:48px;height:48px}
- .toast{bottom:calc(150px + env(safe-area-inset-bottom))}
+ main{padding:22px 14px 24px}.layout{grid-template-columns:1fr}.sound{position:static;max-height:none}.sub{display:none}.visual{height:120px}
+ .nowplaying{order:-1}
+ .transport{gap:8px}.vol{display:none}.cover{width:64px;height:64px}
 }

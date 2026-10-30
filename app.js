@@ -217,7 +217,11 @@ async function setupAudio() {
   compressor = ctx.createDynamicsCompressor();
   compressor.threshold.value = -14; compressor.knee.value = 20; compressor.ratio.value = 2.5; compressor.attack.value = 0.008; compressor.release.value = 0.2;
   dry = ctx.createGain(); wet = ctx.createGain(); convolver = ctx.createConvolver(); master = ctx.createGain();
-  analyser = ctx.createAnalyser(); analyser.fftSize = document.documentElement.classList.contains("lite") ? 2048 : 4096; analyser.smoothingTimeConstant = 0.72;
+  analyser = ctx.createAnalyser(); analyser.fftSize = document.documentElement.classList.contains("lite") ? 2048 : 4096;
+  /* smoothingTimeConstant is intentionally left at the browser default (0.8): fx.js reads
+     the spectrum twice per frame — fd (smoothed, for the visual bands) and raw (freshly
+     computed, used as an un-smoothed transient source for kick detection). Setting it low
+     would make the visible bars jittery while giving the detector no extra information. */
   const len = Math.floor(ctx.sampleRate * 1.8), imp = ctx.createBuffer(2, len, ctx.sampleRate);
   for (let ch = 0; ch < 2; ch++) { const d = imp.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
   convolver.buffer = imp;
@@ -566,8 +570,8 @@ function wire() {
   $("skipBack").onclick = () => { audio.currentTime = Math.max(0, audio.currentTime - settings.skip); };
   $("skipFwd").onclick = () => { audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + settings.skip); };
 
-  audio.addEventListener("play", () => { document.querySelector(".player").classList.add("playing"); $("playIcon").innerHTML = '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'; $("play").setAttribute("aria-label", "Pause"); });
-  audio.addEventListener("pause", () => { document.querySelector(".player").classList.remove("playing"); $("playIcon").innerHTML = '<path d="M8 5v14l11-7z"/>'; $("play").setAttribute("aria-label", "Play"); });
+  audio.addEventListener("play", () => { const np = document.querySelector(".nowplaying") || document.querySelector(".player"); np.classList.add("playing"); $("playIcon").innerHTML = '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'; $("play").setAttribute("aria-label", "Pause"); });
+  audio.addEventListener("pause", () => { const np = document.querySelector(".nowplaying") || document.querySelector(".player"); np.classList.remove("playing"); $("playIcon").innerHTML = '<path d="M8 5v14l11-7z"/>'; $("play").setAttribute("aria-label", "Play"); });
   audio.addEventListener("ended", () => {
     if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
     if (!advance(1)) say("Track ended.");
