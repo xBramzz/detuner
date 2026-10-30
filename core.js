@@ -51,15 +51,10 @@
     0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
     0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
     0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,0x92722c36,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
     0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
     0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x776d7999,0x8ce7e3ec,0xa3f8980e,0xbef9a3f7,0xcbf19e0d,0xb65b29c0,0xc57c263f,0x06ca6351,
-    0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,
-    0x92722c36,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,
-    0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,
-    0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,
-    0xc67178f2];
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
   function sha256Hex(u8) {
     const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
     let H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
@@ -343,6 +338,33 @@
     } catch { return null; }
   }
 
+  /* ---------- beatmatch tempo planning (pure — unit-testable) ----------
+     Given the BPMs of the outgoing and incoming tracks, decide how much to temporarily
+     alter the INCOMING track's playback rate so the two decks align. Rules:
+       • Either BPM missing / non-finite → no match (null).
+       • Fold octave errors first: halve/double the candidate until it is within ±12% of
+         the target (DJ-standard 68–136 window means only one doubling/halving is ever needed).
+       • If the folded gap exceeds maxPct percent → leave the incoming at its natural tempo
+         but report the folded value as `matched` so the UI can show "would fit at X BPM".
+       • Otherwise return a multiplier (incomingRate = settings.tempo × mul) that lands the
+         decks within maxPct of each other. */
+  function planBeatmatch(currentBpm, nextBpm, maxPct = 6) {
+    if (!Number.isFinite(currentBpm) || !Number.isFinite(nextBpm) || currentBpm <= 0 || nextBpm <= 0) return null;
+    const lim = clamp(maxPct, 0.5, 25) / 100;
+    let n = nextBpm;
+    while (n > currentBpm * 1.12) n /= 2;
+    while (n < currentBpm / 1.12) n *= 2;
+    const ratio = currentBpm / n;
+    const matched = Math.round(n * 10) / 10;
+    if (Math.abs(ratio - 1) <= lim) {
+      return { mul: Math.round(ratio * 10000) / 10000, from: Math.round(nextBpm * 10) / 10, to: matched, target: Math.round(currentBpm * 10) / 10, inRange: true };
+    }
+    return { mul: 1, from: Math.round(nextBpm * 10) / 10, to: matched, target: Math.round(currentBpm * 10) / 10, inRange: false };
+  }
+
+  /* Equal-power crossfade curve for x ∈ [0,1]. cos/sin pair keeps summed power flat. */
+  const xfadeGain = (x, out) => { const t = clamp(x, 0, 1); return out ? Math.cos(t * Math.PI / 2) : Math.sin(t * Math.PI / 2); };
+
   /* ---------- queue semantics ---------- */
   function makeQueue() { return []; }
   function queueAdd(q, id, position) {
@@ -380,5 +402,6 @@
     detectFormats, fileAccepted, parseLrc, validateBackup, sanitizeSettings, DEFAULT_SETTINGS,
     makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES, sha256Hex,
     lrcSyncedUrl, lrcSearchUrl, lrcFromRecord, estimateBpm, LRCLIB_BASE,
+    planBeatmatch, xfadeGain,
   };
 })(typeof window !== "undefined" ? window : globalThis);
