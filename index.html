@@ -236,6 +236,10 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <label>Air 10k<input class="range eq" data-freq="10000" type="range" min="-12" max="12" value="0" aria-label="Air 10000 Hz EQ"></label></div>
 <div class="chips eqpresets"><button class="chip" data-preset="flat">Flat</button><button class="chip" data-preset="bass">Bass boost</button><button class="chip" data-preset="no-bass">No bass</button><button class="chip" data-preset="vocal">Vocal</button><button class="chip" data-preset="treble">Treble</button><button class="chip" data-preset="warm">Warm</button><button class="chip" data-preset="bright">Bright</button></div>
 <div class="fieldrow"><label for="reverb">Reverb</label><input id="reverb" class="range" type="range" min="0" max="1" step=".01" value="0" aria-label="Reverb wet mix"></div></div>
+<div class="section"><h3><i class="fa-solid fa-right-left" aria-hidden="true"></i>Crossfade &amp; beatmatch</h3>
+<div class="fieldrow"><label for="xfade">Crossfade</label><input id="xfade" class="range" type="range" min="0" max="12" step="1" value="0" aria-label="Crossfade length in seconds"><span class="small unit" id="xfadeVal">off</span></div>
+<label class="toggleline"><input id="beatmatch" type="checkbox"> Auto-BPM match <span class="small" id="bpmReadout"></span></label>
+<p class="small">DJ-style transitions: the next track eases in while the current one fades out. With auto-match, Detune nudges the incoming tempo (±6%) so the kicks line up.</p></div>
 <div class="section"><h3><i class="fa-solid fa-repeat" aria-hidden="true"></i>A–B loop</h3><div class="fieldrow"><button class="secondary" id="setA"><i class="fa-solid fa-flag" aria-hidden="true"></i>Set A</button><button class="secondary" id="setB"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Set B</button><button class="secondary" id="clearLoop"><i class="fa-solid fa-xmark" aria-hidden="true"></i>Clear</button></div><span id="loopStatus" class="small">A–B off</span></div>
 <p class="status visually-hidden" id="status" role="status" aria-live="polite">Ready. Audio starts after you press Play.</p>
 </aside>

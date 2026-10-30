@@ -308,8 +308,8 @@
       }
       /* Octave disambiguation: tempo octaves all correlate, and the *fundamental* (longest
          strong lag) reads best for beatmatching. Walk down from the slowest tempo; accept a
-         lag if it's within 2% of the global max AND no exact divisor lag (half, third…) is
-         equally strong. Bounded scan — stops at the first accepted candidate. */
+         lag if it's within 2% of the global max AND no smaller divisor lag (lag/2, lag/3…)
+         is equally strong. Bounded scan — stops at the first accepted candidate. */
       let gmax = 0;
       for (let lag = lagMin; lag <= lagMax; lag++) if (ac[lag] > gmax) gmax = ac[lag];
       if (!(gmax > 0)) return null;
@@ -318,10 +318,12 @@
       for (let lag = lagMax; lag >= lagMin && !best; lag--) {
         if (ac[lag] < eps) continue;
         let dominatedByDivisor = false;
-        for (let h = 2; ; h++) {                                    // divisors: lag/2, lag/3 …
-          const q = Math.floor(lag / h);                           // floor — exact division test below
-          if (q * h !== lag || q < lagMin) break;                  // not a divisor (or out of range) → stop
-          if (ac[q] >= eps) { dominatedByDivisor = true; break; }
+        /* Check every exact divisor lag q (lag = q*h): does q itself correlate strongly?
+           Bounded by q >= lagMin, so this always terminates. */
+        for (let h = 2; ; h++) {
+          const q = Math.floor(lag / h);
+          if (q < lagMin) break;                 // divisors only get smaller — done
+          if (q * h === lag && ac[q] >= eps) { dominatedByDivisor = true; break; }
         }
         if (!dominatedByDivisor) best = lag;
       }
@@ -367,9 +369,20 @@
 
   /* ---------- queue semantics ---------- */
   function makeQueue() { return []; }
+  /* Queue semantics: the playback queue is a list of upcoming tracks.
+     - "next": insert at the front so it plays immediately after the current track.
+       Duplicates of an already-queued id are MOVED to the front rather than added twice
+       (playing the same queued song "now" shouldn't create two entries).
+     - "end": append; duplicates are allowed (classic "add to queue" behaviour). */
   function queueAdd(q, id, position) {
     if (!id) return q;
-    if (position === "next") q.unshift(id); else q.push(id);
+    if (position === "next") {
+      const i = q.indexOf(id);
+      if (i >= 0) q.splice(i, 1);
+      q.unshift(id);
+    } else {
+      q.push(id);
+    }
     return q;
   }
   function nextFromQueue(q) { return q.length ? q.shift() : null; }
