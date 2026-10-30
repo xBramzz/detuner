@@ -216,4 +216,4 @@ assert.strictEqual(C.queueAdd(q, null, "next"), q, "null id is a no-op");
   }
 
   console.log("ALL UNIT TESTS PASSED");
-})().catch(e => { console.error("UNIT TEST FAILURE:", e.message); process.exit(1); });
+})().catch(e => { console.error("UNIT TEST FAILURE:", e.message, "\n", e.stack); process.exit(1); });

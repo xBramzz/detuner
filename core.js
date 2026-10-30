@@ -130,7 +130,8 @@
 
   /* ---------- LRC lyrics parsing (offsets, multiple timestamps, malformed lines) ---------- */
   function parseLrc(text) {
-    text = String(text == null ? "" : text).replace(/\r/g, "");
+    if (text == null || text === "") return { synced: false, lines: [] };
+    text = String(text).replace(/\r/g, "");
     const out = [];
     const tre = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
     let off = 0, any = false;
@@ -196,6 +197,7 @@
   /* ---------- settings sanitisation (never trust persisted/imported values) ---------- */
   const EQ_FREQS = [60, 170, 350, 1000, 3500, 10000];
   function sanitizeSettings(s) {
+    s = (s && typeof s === "object") ? s : {};
     const out = {
       cents: clamp(Math.round(+s.cents || 0), -1200, 1200),
       tempo: clamp(+s.tempo || 1, 0.5, 2),
@@ -203,8 +205,9 @@
       volume: clamp(+s.volume ?? 0.8, 0, 1),
       mute: !!s.mute,
       reverb: clamp(+s.reverb || 0, 0, 1),
-      eq: Array.isArray(s.eq) ? s.eq.slice(0, 6).map((g) => clamp(+g || 0, -12, 12)) : [0, 0, 0, 0, 0, 0],
-      skip: clamp(Math.round(+s.skip || 5), 1, 60),
+      /* Always exactly 6 bands; missing entries pad with 0 (UI indexes filters[i] positionally). */
+      eq: (() => { const src = Array.isArray(s.eq) ? s.eq : []; const e = []; for (let i = 0; i < 6; i++) e.push(clamp(+src[i] || 0, -12, 12)); return e; })(),
+      skip: (() => { const v = Math.round(+s.skip || 0); return v < 0 ? 5 : clamp(v, 1, 60); })(),
       vizMode: ["spectrum", "bars", "scope", "circle"].includes(s.vizMode) ? s.vizMode : "spectrum",
       vizFx: s.vizFx === undefined ? true : !!s.vizFx,
       crossfade: clamp(+s.crossfade || 0, 0, 12),
