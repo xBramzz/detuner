@@ -62,3 +62,26 @@ html.lite .lyrics{background:#1c0910}
  .lyrhead h2{font-size:22px}.secondary:not(.icon) i{margin-right:0}#lyrImport{font-size:0}#lyrImport i{font-size:13px}
  .library{height:auto;min-height:70vh}.tracks{max-height:none}
 }
+
+/* ---------- v3 additions: queue panel, row actions, EQ presets, mode readout ---------- */
+.queuebar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 3px 6px}
+.queuebar h3{margin:0;font:600 20px "Cormorant Garamond",Georgia,serif;display:flex;align-items:center;gap:8px}
+.tracks.queue{max-height:150px;min-height:0}
+.qrow{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:5px 10px;border-radius:11px;font-size:13px;color:var(--muted)}
+.qrow:hover{background:rgba(150,18,34,.18)}
+.qn{font-variant-numeric:tabular-nums;opacity:.7}
+.qt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.qx{border:0;background:transparent;width:26px;height:26px;border-radius:50%;font-size:13px;opacity:.6}
+.qx:hover{background:rgba(220,30,45,.3);opacity:1}
+.track{grid-template-columns:auto 42px minmax(0,1fr) auto auto 34px}
+.rowacts{display:flex;gap:2px;flex:none}
+.fav,.q{border:0;background:transparent;width:30px;height:30px;border-radius:50%;font-size:15px;opacity:.55;line-height:1}
+.fav:hover,.q:hover{background:rgba(220,30,45,.3);opacity:1}
+.fav.on{opacity:1;color:#ffcf5a;text-shadow:0 0 10px rgba(255,190,60,.6)}
+.eqpresets .chip{font-size:12px;padding:5px 10px}
+.mode{margin:8px 0 2px;color:var(--muted);line-height:1.35}
+.sleep{display:inline-flex;align-items:center;gap:5px;color:var(--muted);flex:none}
+.sleep .number{width:56px;padding:4px 6px;font-size:12px}
+.transport{flex-wrap:wrap;justify-content:center}
+@media(max-width:900px){.sleep{display:none}.track{grid-template-columns:auto 38px minmax(0,1fr) auto auto 30px}}
+@media(max-width:420px){.rowacts .q{display:none}}
