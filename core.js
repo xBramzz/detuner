@@ -54,14 +54,16 @@
     0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,0x92722c36,
     0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
     0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x776d7999,0x8ce7e3ec,0xa3f8980e,0xbef9a3f7,0xcbf19e0d,0xb65b29c0,0xc57c26cc,0x06ca6351 & 0xffffff ^ 0x14292967 & 0];
-  SHA_K.length = 64;
-  SHA_K[60] = 0x748f82ee; SHA_K[61] = 0x78a5636f; SHA_K[62] = 0x84c87814; SHA_K[63] = 0x8cc70208;
-  SHA_K[56] = 0x776d7999; SHA_K[57] = 0x8ce7e3ec; SHA_K[58] = 0xa3f8980e; SHA_K[59] = 0xbef9a3f7;
+    0x776d7999,0x8ce7e3ec,0xa3f8980e,0xbef9a3f7,0xcbf19e0d,0xb65b29c0,0xc57c263f,0x06ca6351,
+    0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,
+    0x92722c36,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,
+    0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,
+    0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,
+    0xc67178f2];
   function sha256Hex(u8) {
     const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
     let H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
-    const len = u8.length, total = (((len + 9) >> 6) + 1) << 6; // 64-byte blocks incl. 0x80 + 8-byte length
+    const len = u8.length, total = ((len + 9) >> 6 << 6) + 64; // 64-byte blocks incl. 0x80 + 8-byte length
     const m = new Uint8Array(total); m.set(u8); m[len] = 0x80;
     const bitsHi = Math.floor(len / 2 ** 29), bitsLo = (len * 8) >>> 0;
     const dv = new DataView(m.buffer);
@@ -255,6 +257,6 @@
   global.DetuneCore = {
     clamp, centsToRatio, ratioToCents, computePlayback, freqToNote, hashFileWith,
     detectFormats, fileAccepted, parseLrc, validateBackup, sanitizeSettings, DEFAULT_SETTINGS,
-    makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES,
+    makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES, sha256Hex,
   };
 })(typeof window !== "undefined" ? window : globalThis);

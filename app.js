@@ -392,6 +392,10 @@ function updateMediaSession(t) {
 let supportedExts = ["mp3", "wav"];
 async function addFiles(fileList) {
   const all = [...fileList];
+  /* Probe formats lazily: never let a failed/skipped capability check reject playable files. */
+  if (supportedExts.length <= 2) {
+    try { supportedExts = await C.detectFormats(); } catch { /* keep defaults */ }
+  }
   const files = all.filter(f => C.fileAccepted(f, supportedExts));
   const rejected = all.length - files.length;
   if (!files.length) { if (rejected) say(`None of those ${rejected} file(s) look like playable audio (${supportedExts.join(", ")}).`); return; }
@@ -404,7 +408,11 @@ async function addFiles(fileList) {
     try {
       if (f.size === 0) { failed++; continue; }
       if (f.size > 1024 * 1024 * 1024) { say(`${f.name} is over 1 GB and was skipped.`); failed++; continue; }
-      const hash = await C.hashFileWith(f, crypto.subtle);
+      /* crypto.subtle is undefined on plain http (non-secure contexts). Pass null in that case
+         so hashFileWith uses its pure-JS SHA-256 fallback instead of throwing — this was why
+         every import silently failed when serving the app over http://LAN-ip. */
+      const subtle = globalThis.crypto?.subtle || null;
+      const hash = await C.hashFileWith(f, subtle);
       if (known.has(hash)) { dupes++; continue; }
       const tags = window.DetuneTags ? await DetuneTags.read(f, f.name) : {};
       const pic = coverBlob(tags.picture);

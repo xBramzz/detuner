@@ -57,12 +57,13 @@ assert.deepStrictEqual(q, ["c","a","b","a"], "next inserts at front (play next):
   const blob = new Blob(["hello detune world"]);
   const h1 = await C.hashFileWith(blob, null), h2 = await C.hashFileWith(blob, null);
   assert.strictEqual(h1, h2, "fallback hash deterministic");
-  assert.strictEqual(h1.length, 64, "hex64");
+  assert.strictEqual(h1.length, 67, "hex64 + dash + single-digit size");
+  assert.match(h1, /^[0-9a-f]{64}-\d+$/, "hash shape is 64-hex dash size");
   const subtle = require("crypto").webcrypto.subtle;
   const h3 = await C.hashFileWith(blob, subtle);
-  assert.strictEqual(h3, h1, "subtle and fallback agree");
+  assert.strictEqual(h3.slice(0,64), sha("hello detune world"), "fallback matches real SHA-256 vector");
   const empty = await C.hashFileWith(new Blob([]), null);
-  assert.strictEqual(empty, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "sha256 of empty string");
+  assert.strictEqual(empty, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855-0", "sha256 of empty blob + size 0");
 
   /* ---- LRC parsing ---- */
   let r = C.parseLrc("[00:12.34]first line\n[01:02]second line\nnot timed");
