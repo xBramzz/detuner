@@ -6,7 +6,14 @@
 /* cover theme retints the CSS custom properties themselves (see extras.js), so every surface —
    including the fixed blood pool at the bottom of the page — follows the album colour. No filter
    hacks needed any more. */
-html.cover-theme{transition:--blood .6s}
+/* animate the retint when a registered @property channel changes (extras.js sets --blood as an
+   <color>, so this genuinely tweens instead of snapping). */
+@property --blood{syntax:"<color>";inherits:true;initial-value:#c4182a}
+@property --blood-hi{syntax:"<color>";inherits:true;initial-value:#ff3b47}
+@property --accent{syntax:"<color>";inherits:true;initial-value:#a8101f}
+@property --focus{syntax:"<color>";inherits:true;initial-value:#ff7a82}
+@property --moon{syntax:"<color>";inherits:true;initial-value:#d02a33}
+html.cover-theme{transition:--blood .6s,--blood-hi .6s,--accent .6s,--focus .6s,--moon .6s}
 .cover-theme .bg::before,.cover-theme body::after{transition:background .6s var(--ease),box-shadow .6s var(--ease)}
 
 /* lyrics */
@@ -25,7 +32,7 @@ html.cover-theme{transition:--blood .6s}
 .lyr.gap{opacity:.5}
 .lyrempty{display:grid;gap:8px;justify-items:center;padding:20px;color:var(--muted);font-size:14px}.lyrempty i{font-size:34px;color:var(--iconacc);opacity:.7}.lyrempty p{margin:0;color:var(--ink);font-size:18px}
 .lyredit{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
-.lyredit textarea{flex:1;resize:none;min-height:0;background:rgba(10,3,6,.65);color:var(--ink);border:1px solid rgba(255,120,125,.22);border-radius:14px;padding:12px;font:15px/1.5 "DM Sans",system-ui,sans-serif}
+.lyredit textarea{flex:1;resize:none;min-height:0;background:rgba(10,3,6,.65);color:var(--ink);border:1px solid var(--hair);border-radius:14px;padding:12px;font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 
 /* ---------- lite mode: phones, touch devices, <=4 cores. No blur, no infinite animation, no big shadows/filters ---------- */
 html.lite *,html.lite *::before,html.lite *::after{animation:none!important;transition:none!important;-webkit-tap-highlight-color:transparent}
@@ -34,16 +41,17 @@ html.lite .glass{background:linear-gradient(155deg,color-mix(in srgb,var(--blood
 html.lite .modal{background:rgba(14,2,5,.9)}
 html.lite .glass::before,html.lite .glass::after,html.lite .stage::after,html.lite .fog,html.lite .yard,html.lite .embers,html.lite .bg::after,html.lite body::before,html.lite body::after{display:none!important}
 html.lite .bg{background-image:none}
-html.lite .bg::before{width:110px;height:110px;scale:1;filter:none;box-shadow:0 0 50px 16px rgba(200,22,38,.4)}
+html.lite .bg::before{width:110px;height:110px;scale:1;filter:none;box-shadow:0 0 50px 16px color-mix(in srgb,var(--blood) 45%,transparent)}
 html.lite body{background-attachment:scroll}
 html.lite h1,html.lite .cents{filter:none;background-size:100% 100%}
 html.lite .title{text-shadow:none}
+html.lite .player.playing .cover,html.lite .nowplaying.playing .cover{animation:spin 14s linear infinite}
 html.lite .cover{scale:1;box-shadow:0 0 0 3px color-mix(in srgb,var(--blood-dk) 70%,transparent),0 6px 14px rgba(0,0,0,.6)}
 html.lite .nowplaying{box-shadow:0 8px 24px rgba(0,0,0,.65);background:linear-gradient(155deg,color-mix(in srgb,var(--blood-dk) 70%,black),var(--pool2))}
 html.lite .player.playing .iconbtn.primary,html.lite .iconbtn.primary{scale:1;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 70%,black)}
-html.lite .track.active{box-shadow:inset 0 0 0 1px rgba(255,110,120,.5)}
+html.lite .track.active{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blood-hi) 50%,transparent)}
 html.lite .track.active .thumb{scale:1}html.lite .is-playing .track.active::after{display:none}
-html.lite .visual{box-shadow:none;background:#12050a}
+html.lite .visual{box-shadow:none;background:var(--pool2)}
 html.lite .range::-webkit-slider-thumb,html.lite #seek::-webkit-slider-thumb,html.lite .eqgrid label .range::-webkit-slider-thumb{box-shadow:0 1px 4px rgba(0,0,0,.7)}
 html.lite .lyrbody{-webkit-mask-image:none;mask-image:none}
 html.lite .lyr.on{transform:none;text-shadow:none}
@@ -70,7 +78,7 @@ html.lite .lyrics{background:color-mix(in srgb,var(--blood-dk) 55%,black)}
 .queuebar h3{margin:0;font:600 20px "Cormorant Garamond",Georgia,serif;display:flex;align-items:center;gap:8px}
 .tracks.queue{max-height:150px;min-height:0}
 .qrow{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto auto;gap:8px;align-items:center;padding:5px 10px;border-radius:11px;font-size:13px;color:var(--muted)}
-.qrow:hover{background:rgba(150,18,34,.18)}
+.qrow:hover{background:color-mix(in srgb,var(--blood) 18%,transparent)}
 .qn{font-variant-numeric:tabular-nums;opacity:.7}
 .qt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 .qx{border:0;background:transparent;width:26px;height:26px;border-radius:50%;font-size:13px;opacity:.6}

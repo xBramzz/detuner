@@ -17,7 +17,7 @@ h1{font-size:clamp(40px,5vw,58px);line-height:1}
 .cents{font-size:44px}
 .tracks{max-height:min(620px,calc(100vh - 430px));min-height:260px}
 .track{border-radius:12px;min-height:58px}
-.track+.track{box-shadow:0 -1px 0 rgba(255,110,115,.08)}
+.track+.track{box-shadow:0 -1px 0 color-mix(in srgb,var(--ink) 8%,transparent)}
 .heading{margin-top:16px}
 
 /* now playing: a normal column card inside the app grid (was a floating fixed bar that overlapped
@@ -33,7 +33,7 @@ h1{font-size:clamp(40px,5vw,58px);line-height:1}
 .center{display:grid;gap:8px;justify-items:center;min-width:0;width:100%}
 .transport{margin:0;gap:12px}
 .iconbtn{width:40px;height:40px}
-.iconbtn.primary{width:56px;height:56px;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 75%,black),inset 0 1px 0 rgba(255,200,200,.4)}
+.iconbtn.primary{width:56px;height:56px;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 75%,black),inset 0 1px 0 color-mix(in srgb,var(--ink) 38%,transparent)}
 .scrub{display:flex;align-items:center;gap:10px;width:100%;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .scrub .range{flex:1;margin:0;min-width:0}
 .vol{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}

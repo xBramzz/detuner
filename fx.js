@@ -32,20 +32,34 @@ function tick(t){raf=0;if(document.hidden)return;raf=requestAnimationFrame(tick)
   if(!reduce&&!lite)for(const k of["bass","mid","treb","beat"])R.style.setProperty("--"+k,S[k].toFixed(3))}
  else{b=m=h=0;S.avg*=.9;rawPrev=null;if(raw)raw._mid=null;kick(0,0,0,t);
   if(!reduce&&!lite)for(const k of["bass","mid","treb","beat"])R.style.setProperty("--"+k,S[k].toFixed(3))}
+/* fx.js draws on a canvas where CSS vars can't apply directly — read the (possibly cover-tinted)
+   theme channels here and cache by their computed string, so the waveform matches the album too. */
+let waveCache="",wave={lo:"rgb(78,5,14)",mid:"rgb(196,24,42)",hi:"rgb(255,170,160)",glow:"rgb(255,59,71)",spark:"rgb(255,232,228)",line:"rgb(255,240,238)"};
+const _cs=getComputedStyle(R);
+/* resolve any CSS colour string (hsl/rgb/hex) to [r,g,b] via a 1x1 canvas */
+const _pc=document.createElement("canvas");_pc.width=_pc.height=1;const _px=_pc.getContext("2d",{willReadFrequently:true});
+function hx(s){s=(s||"").trim();if(!s)return null;_px.fillStyle="#000";_px.fillStyle=s;_px.fillRect(0,0,1,1);const d=_px.getImageData(0,0,1,1).data;return [d[0],d[1],d[2]]}
+const blend=(A,B,t)=>A.map((c,i)=>Math.round(c+(B[i]-c)*t));
+const rgb=a=>"rgb("+a.join(",")+")";
+function wcol(){const k=_cs.getPropertyValue("--blood")+"|"+_cs.getPropertyValue("--blood-hi")+"|"+_cs.getPropertyValue("--ink");if(k===waveCache)return wave;waveCache=k;
+ const b=hx(_cs.getPropertyValue("--blood"))||[196,24,42],bh=hx(_cs.getPropertyValue("--blood-hi"))||[255,59,71],ink=hx(_cs.getPropertyValue("--ink"))||[244,232,231];
+ wave={lo:rgb(blend(b,[10,0,2],.35)),mid:rgb(b),hi:rgb(blend(bh,ink,.55)),glow:rgb(bh),spark:rgb(blend(ink,[255,255,255],.6)),line:rgb(blend(ink,[255,255,255],.75))};
+ return wave}
  /* waveform: log-spaced mirrored spectrum + live oscilloscope line + falling peak caps */
  const cv=$("visual"),r=cv.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,lite?1.5:2),w=Math.max(1,r.width*dpr|0),H=Math.max(1,r.height*dpr|0);
  if(cv.width!==w||cv.height!==H){cv.width=w;cv.height=H}
  const c=cv.getContext("2d"),mid=H/2,amp=H*.46,idle=S.bass+S.mid+S.treb<.03&&!playing;c.clearRect(0,0,w,H);
+ const WC=wcol();
  for(let i=0;i<N;i++){let v=0;if(fd){const f=x=>Math.floor(40*Math.pow(400,x/N)/hz),lo=f(i),hi=Math.max(lo+1,f(i+1));let s=0,k=0;for(let j=lo;j<hi&&j<fd.length;j++){s+=fd[j];k++}v=k?Math.pow(s/k/255,1.4)*(1+i/N*.7):0}
   if(idle)v=.05+.04*Math.sin(i*.3+t/400)*Math.sin(t/1700+i*.05);sm[i]+=(v-sm[i])*(v>sm[i]?.55:.18);pk[i]=Math.max(sm[i],pk[i]-.006)}
  const X=i=>i*w/(N-1),Y=(i,sg)=>mid-sg*Math.min(1,sm[i])*amp;
  for(const sg of[1,-1]){c.beginPath();c.moveTo(0,mid);for(let i=0;i<N;i++){const x=X(i),y=Y(i,sg);if(!i)c.lineTo(x,y);else c.quadraticCurveTo(X(i-1),Y(i-1,sg),(X(i-1)+x)/2,(Y(i-1,sg)+y)/2)}c.lineTo(w,mid);c.closePath();
-  const g=c.createLinearGradient(0,mid,0,mid-sg*amp);g.addColorStop(0,"rgba(120,8,20,.85)");g.addColorStop(.6,"rgba(220,30,48,.9)");g.addColorStop(1,"rgba(255,170,160,.95)");
-  c.globalAlpha=sg>0?1:.38;c.fillStyle=g;c.shadowColor="rgba(255,40,60,.9)";c.shadowBlur=lite?0:(6+S.beat*22)*dpr;c.fill()}
- c.globalAlpha=1;c.shadowBlur=0;c.fillStyle="rgba(255,225,220,.9)";
+  const g=c.createLinearGradient(0,mid,0,mid-sg*amp);g.addColorStop(0,WC.lo);g.addColorStop(.6,WC.mid);g.addColorStop(1,WC.hi);
+  c.globalAlpha=sg>0?1:.38;c.fillStyle=g;c.shadowColor=WC.glow;c.shadowBlur=lite?0:(6+S.beat*22)*dpr;c.fill()}
+ c.globalAlpha=1;c.shadowBlur=0;c.fillStyle=WC.spark;
  for(let i=0;i<N;i+=2){const y=Math.min(1,pk[i])*amp;c.fillRect(X(i)-dpr,mid-y-2*dpr,2*dpr,1.6*dpr);c.globalAlpha=.35;c.fillRect(X(i)-dpr,mid+y+.5*dpr,2*dpr,1.6*dpr);c.globalAlpha=1}
  c.beginPath();const M=Math.min(180,w/3|0);for(let k=0;k<M;k++){const y=mid+(td?(td[(k/(M-1)*(td.length-1))|0]-128)/128:0)*amp*.55;k?c.lineTo(k/(M-1)*w,y):c.moveTo(0,y)}
- c.lineWidth=1.4*dpr;c.strokeStyle="rgba(255,235,232,.8)";c.shadowColor="#ff2a40";c.shadowBlur=lite?0:8*dpr;c.stroke();c.shadowBlur=0;
+ c.lineWidth=1.4*dpr;c.strokeStyle=WC.line;c.shadowColor=WC.glow;c.shadowBlur=lite?0:8*dpr;c.stroke();c.shadowBlur=0;
  /* embers */
  ec.clearRect(0,0,em.width,em.height);ec.globalCompositeOperation="lighter";if(!reduce&&Math.random()<(playing?.2+S.bass*.8:.04))spawn(1);
  for(let i=P.length-1;i>=0;i--){const p=P[i];p.ph+=.03;p.x+=p.vx+Math.sin(p.ph)*.4;p.y+=p.vy;p.a-=.0035;if(p.a<=0||p.y<-10){P.splice(i,1);continue}ec.fillStyle=`rgba(255,${70+p.a*90|0},70,${p.a*.75})`;ec.beginPath();ec.arc(p.x,p.y,p.r*(1+S.treb),0,6.283);ec.fill()}
