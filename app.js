@@ -17,7 +17,7 @@ let playlists = [{ id: "default", name: "My graveyard", trackIds: [] }];
 let activePlaylist = "default";
 let settings = { ...C.DEFAULT_SETTINGS };
 let perTrack = {};                     // id -> {cents,tempo} overrides
-let currentId = null, queue = [], lyricsStore = {}, stats = { plays: {}, recent: [] };
+let currentId = null, lyricsStore = {}, stats = { plays: {}, recent: [] };
 let shuffle = false, repeat = "off";   // off | all | one
 let loopA = null, loopB = null;
 let renderQueued = false, dragId = null;
@@ -167,9 +167,7 @@ function render() {
     fav.setAttribute("aria-label", (t.favorite ? "Unfavorite " : "Favorite ") + t.title);
     fav.setAttribute("aria-pressed", String(!!t.favorite));
     fav.onclick = e => { e.stopPropagation(); toggleFav(t); };
-    const qbtn = el("button", "q", "+"); qbtn.title = "Add to queue"; qbtn.setAttribute("aria-label", `Queue ${t.title}`);
-    qbtn.onclick = e => { e.stopPropagation(); enqueue(t.id, "end"); };
-    acts.append(fav, qbtn);
+    acts.append(fav);
 
     const dur = el("span", "duration", fmt(t.duration) + ((stats.plays[t.id] || 0) ? ` · ${stats.plays[t.id]} plays` : ""));
     const remove = el("button", "remove", "×"); remove.setAttribute("aria-label", `Remove ${t.title}`);
@@ -184,7 +182,7 @@ function render() {
     frag.append(li);
   }
   list.replaceChildren(frag);
-  renderPlaylists(); renderQueue(); updateStorage();
+  renderPlaylists(); updateStorage();
 }
 
 function renderPlaylists() {
@@ -192,25 +190,6 @@ function renderPlaylists() {
   for (const p of playlists) { const o = document.createElement("option"); o.value = p.id; o.textContent = `${p.name} (${p.trackIds.length})`; s.append(o); }
   s.value = activePlaylist;
 }
-function renderQueue() {
-  const box = $("queueList"); if (!box) return;
-  box.replaceChildren();
-  $("queueCount").textContent = queue.length ? `${queue.length} queued` : "";
-  if (!queue.length) { box.append(el("li", "empty", "Queue is empty. Use ＋ on a track or “Queue selected”.")); return; }
-  queue.forEach((id, i) => {
-    const t = trackById(id); if (!t) return;
-    const li = el("li", "qrow");
-    li.append(el("span", "qn", String(i + 1)), el("span", "qt", t.title));
-    const up = el("button", "qx", "↑"); up.title = "Move up"; up.setAttribute("aria-label", "Move up"); up.disabled = i === 0;
-    up.onclick = () => { [queue[i - 1], queue[i]] = [queue[i], queue[i - 1]]; saveQueueSoon(); renderQueue(); };
-    const go = el("button", "qx", "▶"); go.title = "Play now"; go.setAttribute("aria-label", "Play now");
-    go.onclick = () => { queue.splice(i, 1); saveQueueSoon(); playTrack(id, true); };
-    const rm = el("button", "qx", "×"); rm.title = "Remove from queue"; rm.setAttribute("aria-label", "Remove from queue");
-    rm.onclick = () => { queue.splice(i, 1); saveQueueSoon(); renderQueue(); };
-    li.append(up, go, rm); box.append(li);
-  });
-}
-const saveQueueSoon = () => metaSetSoon("queue", () => queue.slice(), 300);
 
 /* ------------------------------------------------------------------ audio engine */
 let ctx = null, source = null, pitchNode = null, filters = [], compressor = null, master = null, analyser = null, dry = null, wet = null, convolver = null;
@@ -276,8 +255,11 @@ function applySettings() {
   const pp = model.preservesPitch;
   const needRelatch = audio.preservesPitch !== pp && !Number.isNaN(audio.duration) && !audio.paused;
   audio.preservesPitch = audio.mozPreservesPitch = audio.webkitPreservesPitch = pp;
-  audio.defaultPlaybackRate = model.rate;
-  audio.playbackRate = model.rate;
+  /* In vinyl (link) mode the tempo slider rides on top of the cents ratio through the element
+     rate, so both stay independently adjustable while pitch+speed remain physically linked. */
+  const effRate = settings.link ? clamp(model.elementRatio * (settings.tempo || 1), 0.0625, 4) : model.rate;
+  audio.defaultPlaybackRate = effRate;
+  audio.playbackRate = effRate;
   if (needRelatch) { const t = audio.currentTime; try { audio.load(); audio.currentTime = t; if (!audio.paused) audio.play().catch(() => {}); } catch { /* ignore */ } }
   /* UI sync */
   $("centsText").textContent = (settings.cents > 0 ? "+" : "") + settings.cents;
@@ -287,7 +269,7 @@ function applySettings() {
   const semis = settings.cents / 100;
   $("pitchNote").textContent = `A₄ = ${(440 * C.centsToRatio(settings.cents)).toFixed(2)} Hz` + (settings.cents ? ` · ${semis > 0 ? "+" : ""}${semis.toFixed(2)} st` : "");
   $("modeReadout").textContent = settings.link
-    ? `Vinyl mode — speed ${model.rate.toFixed(3)}× carries the pitch; tempo slider is inactive`
+    ? `Vinyl mode — speed ${effRate.toFixed(3)}× carries the pitch (${settings.cents > 0 ? "+" : ""}${settings.cents}c)`
     : `Detuned mode — pitch ${settings.cents > 0 ? "+" : ""}${settings.cents}c via DSP · speed ${settings.tempo.toFixed(2)}× independent`;
   document.querySelectorAll(".eq").forEach((r, i) => { if (settings.eq[i] != null) r.value = settings.eq[i]; });
   metaSetSoon("settings", () => settings);
@@ -329,17 +311,10 @@ function countPlay(id) {
 }
 function advance(dir = 1) {
   const ids = currentList().map(t => t.id);
-  const nextQueued = dir > 0 && queue.length ? queue.shift() : null;
-  const pick = C.pickNext(ids, currentId, { dir, shuffle, repeat, nextQueued });
-  if (nextQueued && pick?.via === "queue") saveQueueSoon();
+  const pick = C.pickNext(ids, currentId, { dir, shuffle, repeat });
   if (!pick) { if (dir > 0) say("End of playlist."); return false; }
   playTrack(pick.id, true);
   return true;
-}
-function enqueue(id, pos = "end") {
-  if (!trackById(id)) return;
-  C.queueAdd(queue, id, pos); saveQueueSoon(); renderQueue();
-  say(pos === "next" ? "Queued next." : "Added to queue.");
 }
 async function toggleFav(t) {
   t.favorite = !t.favorite;
@@ -356,7 +331,6 @@ async function removeTrack(id) {
   try {
     if (id === currentId) { audio.pause(); audio.removeAttribute("src"); audio.load(); revoke(audioUrl); audioUrl = null; currentId = null; $("title").textContent = "Nothing playing"; $("artist").textContent = "Add a song to begin"; setCover(null); }
     for (const p of playlists) p.trackIds = p.trackIds.filter(x => x !== id);
-    queue = queue.filter(x => x !== id); saveQueueSoon();
     tracks = tracks.filter(x => x.id !== id);
     selected.delete(id); delete perTrack[id];
     if (t.coverUrl) revoke(t.coverUrl);
@@ -583,7 +557,7 @@ function wire() {
   drop.addEventListener("drop", e => { const f = [...e.dataTransfer.files]; if (f.length) addFiles(f); });
 
   $("play").onclick = async () => {
-    if (currentId === null) { const id = queue.shift() || playlist()?.trackIds[0]; if (id) { saveQueueSoon(); await playTrack(id, true); } else say("Add a track first."); return; }
+    if (currentId === null) { const id = playlist()?.trackIds[0]; if (id) { await playTrack(id, true); } else say("Add a track first."); return; }
     try { if (ctx?.state === "suspended") await ctx.resume(); if (audio.paused) await audio.play(); else audio.pause(); }
     catch { say("Playback needs a user gesture. Press Play again."); }
   };
@@ -596,8 +570,7 @@ function wire() {
   audio.addEventListener("pause", () => { document.querySelector(".player").classList.remove("playing"); $("playIcon").innerHTML = '<path d="M8 5v14l11-7z"/>'; $("play").setAttribute("aria-label", "Play"); });
   audio.addEventListener("ended", () => {
     if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
-    const went = advance(1);
-    if (!went && !queue.length) say("Track ended.");
+    if (!advance(1)) say("Track ended.");
   });
   audio.addEventListener("error", () => { if (audio.src) say("This audio could not be played. Try a different file."); });
   audio.addEventListener("timeupdate", () => {
@@ -636,8 +609,6 @@ function wire() {
 
   $("shuffle").onclick = () => { shuffle = !shuffle; $("shuffle").textContent = `Shuffle: ${shuffle ? "on" : "off"}`; $("shuffle").setAttribute("aria-pressed", String(shuffle)); };
   $("repeat").onclick = () => { repeat = repeat === "off" ? "all" : repeat === "all" ? "one" : "off"; $("repeat").textContent = `Repeat: ${repeat}`; };
-  $("enqueueSel").onclick = () => { if (!selected.size) return say("Select tracks first."); [...selected].forEach(id => C.queueAdd(queue, id, "end")); saveQueueSoon(); renderQueue(); say(`${selected.size} track(s) queued.`); };
-  $("clearQueue").onclick = () => { if (queue.length && confirm("Clear the whole queue?")) { queue = []; saveQueueSoon(); renderQueue(); } };
 
   $("selectAll").onclick = () => { viewRows().rows.forEach(t => selected.add(t.id)); scheduleRender(); };
   $("deleteSelected").onclick = async () => { if (!selected.size) return say("Select tracks to delete."); if (!confirm(`Delete ${selected.size} selected track(s) from the library? This removes their stored audio.`)) return; for (const id of [...selected]) await removeTrack(id); selected.clear(); scheduleRender(); };
@@ -665,7 +636,6 @@ function wire() {
     else if (e.key.toLowerCase() === "m") $("mute").click();
     else if (e.key.toLowerCase() === "s") $("shuffle").click();
     else if (e.key.toLowerCase() === "r") $("repeat").click();
-    else if (e.key.toLowerCase() === "q") $("enqueueSel").click();
   });
   document.addEventListener("visibilitychange", () => { if (document.hidden) audio.dataset.wasPlaying = "1"; else delete audio.dataset.wasPlaying; });
   window.addEventListener("beforeunload", () => { for (const u of [...urls]) revoke(u); try { ctx?.close(); } catch { /* ignore */ } });
@@ -695,7 +665,6 @@ async function init() {
     activePlaylist = await metaGet("activePlaylist", "default");
     settings = C.sanitizeSettings({ ...settings, ...(await metaGet("settings", {})) });
     perTrack = await metaGet("perTrack", {});
-    queue = (await metaGet("queue", [])).filter(trackById); // drop stale references
     stats = await metaGet("stats", stats);
     lyricsStore = await metaGet("lyrics", {});
     for (const t of tracks) { if (!t.id) t.id = makeId(); if (!Number.isFinite(t.duration)) t.duration = 0; if (!Number.isFinite(t.added)) t.added = Date.now(); }
@@ -712,7 +681,6 @@ async function init() {
     applySettings();
     render();
     retag();
-    if (queue.length) $("queueCount").textContent = `${queue.length} queued`;
     if (playlist().trackIds.length) await playTrack(playlist().trackIds[0], false);
     if ("serviceWorker" in navigator && location.protocol !== "file:") navigator.serviceWorker.register("./sw.js").catch(e => console.warn("PWA offline caching unavailable", e));
     say("Library ready.");
