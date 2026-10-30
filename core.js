@@ -222,6 +222,127 @@
   }
   const DEFAULT_SETTINGS = sanitizeSettings({});
 
+  /* ---------- LRCLIB (https://lrclib.net/docs) — pure request builders, testable in Node.
+     The app only ever calls these with locally-known title/artist/duration; nothing else
+     about the user's library leaves the browser. ---- */
+  const LRCLIB_BASE = "https://lrclib.net/api";
+  function lrcClean(s) { return String(s == null ? "" : s).replace(/[\r\n]+/g, " ").trim().slice(0, 200); }
+  function lrcSyncedUrl({ artist, title, duration }) {
+    const p = new URLSearchParams();
+    const a = lrcClean(artist), t = lrcClean(title);
+    if (a && !/^(unknown|unknown artist)$/i.test(a)) p.set("artist_name", a);
+    if (t) p.set("track_title", t);
+    if (Number.isFinite(duration) && duration > 0) p.set("duration", Math.round(duration));
+    if (!p.has("track_title")) return null; // API requires at least a track title
+    return `${LRCLIB_BASE}/get?${p.toString()}`;
+  }
+  function lrcSearchUrl({ artist, title }) {
+    const p = new URLSearchParams();
+    const q = [lrcClean(title), lrcClean(artist)].filter(x => x && !/^(unknown|unknown artist)$/i.test(x)).join(" ");
+    if (!q) return null;
+    p.set("q", q);
+    return `${LRCLIB_BASE}/search?${p.toString()}`;
+  }
+  /* Map an LRCLIB record to our raw-LRC text (or null). Prefers synced lyrics so the
+     highlighter works; falls back to plain text. Never fabricates timestamps. */
+  function lrcFromRecord(rec) {
+    if (!rec || typeof rec !== "object") return null;
+    const synced = typeof rec.syncedLyrics === "string" ? rec.syncedLyrics.trim() : "";
+    const plain = typeof rec.plainLyrics === "string" ? rec.plainLyrics.trim() : "";
+    if (synced && /\[\d{1,3}:\d{1,2}/.test(synced)) return synced;
+    if (plain) return plain;
+    return null;
+  }
+
+  /* ---------- BPM estimation (autocorrelation on band-limited onset energy) ----------
+     Pure DSP over an AudioBuffer — deterministic and unit-testable with synthetic beats.
+     Steps: lowpass ~200 Hz → envelope (rectify + 50 Hz lowpass) → 40 Hz highpass to strip
+     the DC bias (this is what makes sustained bass count as energy instead of "beats") →
+     normalise → autocorrelation over 70–190 BPM → parabolic peak interpolation. */
+  function estimateBpm(buffer) {
+    try {
+      if (!buffer || !buffer.length || !buffer.sampleRate) return null;
+      const sr = buffer.sampleRate;
+      const chA = buffer.getChannelData(0);
+      const chB = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : null;
+      const win = Math.min(chA.length, Math.floor(sr * 30)); // analyse first 30 s — plenty for tempo
+      const fs = sr / 8;                                     // decimate ×8 (e.g. 44.1k → 5.5125 kHz)
+      const n = Math.floor(win / 8);
+      if (n < fs) return null;                               // under one second of audio
+      /* 8× decimation lowpass (~Nyquist/8 ≈ 550 Hz @44.1k) — kills aliasing before downsample */
+      const taps = 17, h = new Float32Array(taps);
+      { let s = 0; const fc = 0.115;
+        for (let i = 0; i < taps; i++) { const x = i - (taps >> 1); h[i] = x === 0 ? 2 * fc : Math.sin(Math.PI * fc * x) / (Math.PI * x); }
+        for (let i = 0; i < taps; i++) { const w = 0.54 - 0.46 * Math.cos(2 * Math.PI * i / (taps - 1)); h[i] *= w; s += h[i]; }
+        for (let i = 0; i < taps; i++) h[i] /= s; }
+      const env = new Float32Array(n);
+      /* Kick-band envelope: two cascaded one-pole lowpass ≈150 Hz @5.5 kHz (state persists
+         across every sample), rectified, RMS per decimated frame, then a DC-blocking HPF so
+         a sustained sub-bass drone counts as *energy*, not as beats. */
+      const aLP = 1 - Math.exp(-2 * Math.PI * 150 / fs);
+      const aHP = Math.exp(-2 * Math.PI * 40 / fs);          // one-pole HPF ≈40 Hz @5.5 kHz
+      let lp1 = 0, lp2 = 0, xPrev = 0, yPrev = 0;
+      for (let i = 0; i < n; i++) {
+        const base = i * 8;
+        let acc = 0;
+        for (let j = 0; j < 8; j++) {
+          const k = base + j; if (k >= win) break;
+          let x = chA[k]; if (chB) x = (x + chB[k]) * 0.5;   // mono sum keeps stereo decks fair
+          lp1 += aLP * (x - lp1); lp2 += aLP * (lp1 - lp2);
+          acc += lp2 * lp2;                                  // rectify: energy of the kick band
+        }
+        const e = Math.sqrt(acc / 8);
+        const dc = e - xPrev + yPrev;                        // HPF difference equation
+        xPrev = e; yPrev = dc;
+        env[i] = dc > 0 ? dc : 0;                            // keep onsets only
+      }
+      let m = 0; for (let i = 0; i < n; i++) m += env[i]; m /= n;
+      if (!(m > 1e-7)) return null;                          // silence → no guess
+      /* Adaptive binarisation (~25% of mean onset height): makes autocorrelation fire on the
+         KICK pulse instead of riding the continuous bassline wobble. */
+      const thr = m * 0.25;
+      for (let i = 0; i < n; i++) env[i] = env[i] > thr ? 1 : 0;
+      const lagMin = Math.max(1, Math.round(fs * 60 / 200)); // 200 BPM ceiling
+      const lagMax = Math.min(n - 2, Math.round(fs * 60 / 60)); // 60 BPM floor
+      if (lagMax - lagMin < 2) return null;
+      const ac = new Float32Array(lagMax + 2);
+      for (let lag = lagMin; lag <= lagMax; lag++) {
+        let s = 0;
+        for (let i = 0; i + lag < n; i++) s += env[i] * env[i + lag];
+        ac[lag] = s / (n - lag);                             // unbiased — short lags stay honest
+      }
+      /* Octave disambiguation: tempo octaves all correlate, and the *fundamental* (longest
+         strong lag) reads best for beatmatching. Walk down from the slowest tempo; accept a
+         lag if it's within 2% of the global max AND no exact divisor lag (half, third…) is
+         equally strong. Bounded scan — stops at the first accepted candidate. */
+      let gmax = 0;
+      for (let lag = lagMin; lag <= lagMax; lag++) if (ac[lag] > gmax) gmax = ac[lag];
+      if (!(gmax > 0)) return null;
+      const eps = gmax * 0.98;
+      let best = 0;
+      for (let lag = lagMax; lag >= lagMin && !best; lag--) {
+        if (ac[lag] < eps) continue;
+        let dominatedByDivisor = false;
+        for (let h = 2; ; h++) {                                    // divisors: lag/2, lag/3 …
+          const q = Math.floor(lag / h);                           // floor — exact division test below
+          if (q * h !== lag || q < lagMin) break;                  // not a divisor (or out of range) → stop
+          if (ac[q] >= eps) { dominatedByDivisor = true; break; }
+        }
+        if (!dominatedByDivisor) best = lag;
+      }
+      if (!best) { best = lagMin; for (let lag = lagMin + 1; lag <= lagMax; lag++) if (ac[lag] > ac[best]) best = lag; }
+      let lag = best;                                        // parabolic interpolation around the peak
+      if (best > lagMin && best < lagMax) {
+        const d = ac[best - 1] - 2 * ac[best] + ac[best + 1];
+        if (Math.abs(d) > 1e-12) lag = best - 0.5 * (ac[best + 1] - ac[best - 1]) / d;
+      }
+      let bpm = 60 * fs / lag;
+      while (bpm < 70) bpm *= 2;                             // fold into a DJ-friendly window
+      while (bpm > 190) bpm /= 2;
+      return Math.round(bpm * 10) / 10;
+    } catch { return null; }
+  }
+
   /* ---------- queue semantics ---------- */
   function makeQueue() { return []; }
   function queueAdd(q, id, position) {
@@ -258,5 +379,6 @@
     clamp, centsToRatio, ratioToCents, computePlayback, freqToNote, hashFileWith,
     detectFormats, fileAccepted, parseLrc, validateBackup, sanitizeSettings, DEFAULT_SETTINGS,
     makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES, sha256Hex,
+    lrcSyncedUrl, lrcSearchUrl, lrcFromRecord, estimateBpm, LRCLIB_BASE,
   };
 })(typeof window !== "undefined" ? window : globalThis);
