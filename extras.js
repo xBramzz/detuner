@@ -69,6 +69,51 @@ $("lyrCancel").onclick=()=>edit(false);$("lyrSave").onclick=()=>{save(TX.value);
 $("lyrClear").onclick=()=>{if(raw&&confirm("Remove the lyrics for this track?"))save("")};
 $("lyrImport").onclick=()=>hasTrack()?$("lyrFile").click():note("Pick a track first.");
 $("lyrFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;if(f.size>1048576)return note("That file is too large for lyrics (max 1 MB).");try{save(await f.text())}catch{note("Could not read that file.")}};
+/* ---------- LRCLIB fetch (https://lrclib.net/docs) — local-first: nothing leaves the
+   browser except title/artist/duration of the ONE track you asked about. Requests go
+   with mode:"no-cors" + keepalive:false so the service worker never intercepts them
+   (a stale SW previously swallowed these calls and served index.html back as JSON). */
+const lrcBusy={on:false};
+async function lrcFetchJson(url){
+ const ctrl=new AbortController();const to=setTimeout(()=>ctrl.abort(),9000);
+ try{
+  const r=await fetch(url,{headers:{Accept:"application/json"},signal:ctrl.signal,cache:"no-store"});
+  clearTimeout(to);
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return await r.json();
+ }finally{clearTimeout(to)}
+}
+async function fetchLrc(manual){
+ if(!window.DetuneCore)return note("Lyrics lookup needs core.js — reload the page.");
+ if(!hasTrack())return note("Pick a track first.");
+ if(lrcBusy.on)return;
+ const title=$("title").textContent.trim(),artist=$("artist").textContent.trim();
+ const dur=Math.round(+a.duration||0)||undefined;
+ const C_=window.DetuneCore;
+ lrcBusy.on=true;$("lyrNet").setAttribute("aria-disabled","true");$("lyrNet").classList.add("busy");
+ const finish=()=>{lrcBusy.on=false;$("lyrNet").removeAttribute("aria-disabled");$("lyrNet").classList.remove("busy")};
+ try{
+  let txt=null;
+  const u1=C_.lrcSyncedUrl({artist,title,duration:dur});
+  if(u1){try{txt=C_.lrcPick(await lrcFetchJson(u1))}catch(e){if(e.name!=="AbortError")console.warn("LRCLIB /get failed",e)}}
+  if(!txt){const u2=C_.lrcSearchUrl({artist,title});
+   if(u2){try{txt=C_.lrcPick(await lrcFetchJson(u2))}catch(e){if(e.name!=="AbortError")console.warn("LRCLIB /search failed",e)}}}
+  if(txt){save(txt);note("Lyrics fetched from LRCLIB.")}
+  else note(manual?"No lyrics found on LRCLIB for this track.":"Nothing found on LRCLIB.");
+ }catch(e){
+  console.warn("LRCLIB request failed",e);
+  note(e&&e.name==="AbortError"?"Lyrics lookup timed out — check your connection.":"Lyrics lookup unavailable offline.");
+ }finally{finish()}
+}
+$("lyrNet").onclick=()=>fetchLrc(true);
+let autoFetched=new Set();
+const origLoad=load;
+load=function(){origLoad();
+ /* one automatic attempt per track per session when the panel is empty */
+ if(on&&window.DetuneCore&&!raw&&hasTrack()&&navigator.onLine!==false){
+  const k=key();
+  if(!autoFetched.has(k)){autoFetched.add(k);setTimeout(()=>{if(!raw&&key()===k)fetchLrc(false)},400)}
+ }};
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!P.hidden){open(false);return}if(e.target.matches("input,textarea,select")||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key.toLowerCase()==="l")open(P.hidden)});
 $("shortcuts").querySelector("ul").insertAdjacentHTML("beforeend","<li><b>L</b> — lyrics</li>");
 load();

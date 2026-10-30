@@ -7,6 +7,7 @@ const C = window.DetuneCore;
 if (!C) throw new Error("core.js failed to load");
 const $ = id => document.getElementById(id);
 const audio = $("audio");
+const audioB = $("audioB");   /* second deck — crossfade only */
 const clamp = C.clamp;
 
 /* ------------------------------------------------------------------ state */
@@ -192,7 +193,7 @@ function renderPlaylists() {
 }
 
 /* ------------------------------------------------------------------ audio engine */
-let ctx = null, source = null, pitchNode = null, filters = [], compressor = null, master = null, analyser = null, dry = null, wet = null, convolver = null;
+let ctx = null, source = null, sourceB = null, pitchNode = null, pitchB = null, filters = [], compressor = null, master = null, analyser = null, dry = null, wet = null, convolver = null;
 const EQ_FREQS = C.EQ_FREQS; // [60,170,350,1000,3500,10000]
 
 async function setupAudio() {
@@ -213,6 +214,14 @@ async function setupAudio() {
     setTimeout(() => say("Pitch engine could not load — pitch shifting is off. Open Detune over http(s), not file://."), 400);
   }
   source = ctx.createMediaElementSource(audio);
+  /* Deck B gets its own pitch node so the worklet delay-line resets cleanly per track —
+     no stale tail of the previous song bleeding into the crossfade. */
+  if (pitchNode) {
+    try { pitchB = new AudioWorkletNode(ctx, "detune-pitch", { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 2, channelCountMode: "explicit", outputChannelCount: [2] }); } catch (e) { console.warn("Deck B pitch node unavailable", e); pitchB = null; }
+  }
+  sourceB = ctx.createMediaElementSource(audioB);
+  { let nb = sourceB; if (pitchB) { nb.connect(pitchB); nb = pitchB; } nb.connect(master); }
+  audioB.volume = 0;   /* deck B is silent unless a crossfade explicitly raises it */
   filters = EQ_FREQS.map((f, i) => { const b = ctx.createBiquadFilter(); b.type = i === 0 ? "lowshelf" : i === EQ_FREQS.length - 1 ? "highshelf" : "peaking"; b.frequency.value = f; b.Q.value = 0.8; b.gain.value = 0; return b; });
   compressor = ctx.createDynamicsCompressor();
   compressor.threshold.value = -14; compressor.knee.value = 20; compressor.ratio.value = 2.5; compressor.attack.value = 0.008; compressor.release.value = 0.2;
@@ -264,6 +273,7 @@ function applySettings() {
   const effRate = settings.link ? clamp(model.elementRatio * (settings.tempo || 1), 0.0625, 4) : model.rate;
   audio.defaultPlaybackRate = effRate;
   audio.playbackRate = effRate;
+  if (xfade.active) xfade.rateB = effRate * (xfade.mul || 1);   /* keep the fading-in deck in sync */
   if (needRelatch) { const t = audio.currentTime; try { audio.load(); audio.currentTime = t; if (!audio.paused) audio.play().catch(() => {}); } catch { /* ignore */ } }
   /* UI sync */
   $("centsText").textContent = (settings.cents > 0 ? "+" : "") + settings.cents;
@@ -281,26 +291,169 @@ function applySettings() {
 
 /* ------------------------------------------------------------------ playback */
 let audioUrl = null;
+
+/* ---------------- crossfade + auto-BPM engine ----------------
+   Deck A (the #audio element) owns normal playback. When the current track is
+   within `settings.crossfade` seconds of its end, we resolve the next track with
+   the SAME pickNext logic advance() uses, preload it into deck B (#audioB → own
+   pitch worklet → master), and ramp gains on an equal-power curve via rAF.
+   If the user dragged the Crossfade slider during playback, xfade.pending picks
+   up the new length at the next transition. Repeat-one / A–B loops never fade. */
+const xfade = { active: false, raf: 0, t0: 0, dur: 6, urlB: null, idB: null, mul: 1, rateB: 1, pending: null, busy: false };
+const bpmCache = new Map();     // trackId -> bpm | null (session only — no DB churn)
+const bpmBusy = new Set();
+function xfadeUI() {
+  const s = $("xfade"), v = $("xfadeVal");
+  if (s && +s.value !== settings.crossfade) s.value = settings.crossfade;
+  if (v) v.textContent = settings.crossfade ? `${settings.crossfade}s` : "off";
+  const bm = $("beatmatch"); if (bm && bm.checked !== settings.beatmatch) bm.checked = settings.beatmatch;
+}
+function stopXfade() {
+  cancelAnimationFrame(xfade.raf); xfade.raf = 0;
+  try { audioB.pause(); } catch { /* ignore */ }
+  audioB.removeAttribute("src"); audioB.load();
+  revoke(xfade.urlB); xfade.urlB = null; xfade.idB = null; xfade.mul = 1;
+  xfade.active = false; xfade.busy = false;
+}
+function armXfade() {                       /* called from timeupdate near the end of a track */
+  const secs = settings.crossfade;
+  if (!secs || !ctx || !currentId || repeat === "one" || (loopA !== null && loopB !== null)) return;
+  if (xfade.active || xfade.busy) return;
+  if (document.hidden) return;              /* don't leak a half-faded deck into a background tab */
+  if (audio.paused || !Number.isFinite(audio.duration)) return;
+  if (loopA !== null && audio.currentTime < loopA) return;
+  const remain = (loopB !== null ? loopB : audio.duration) - audio.currentTime;
+  if (!(remain > 0.25) || remain > secs) return;
+  const ids = currentList().map(t => t.id);
+  const pick = C.pickNext(ids, currentId, { dir: 1, shuffle, repeat });
+  if (!pick || pick.id === currentId) return;
+  const nt = trackById(pick.id); if (!nt || !nt.blob) return;
+  xfade.busy = true;
+  Promise.resolve(startCrossfade(nt)).catch(e => { console.warn("Crossfade aborted", e); xfade.busy = false; });
+}
+async function startCrossfade(nt) {
+  const dur = xfade.pending != null ? xfade.pending : settings.crossfade;
+  xfade.pending = null;
+  const model = C.computePlayback(settings);
+  const effRate = settings.link ? clamp(model.elementRatio * (settings.tempo || 1), 0.0625, 4) : model.rate;
+  let mul = 1;
+  if (settings.beatmatch) {
+    await ensureBpm(trackById(currentId));
+    const bA = currentId && bpmCache.get(currentId);
+    const bB = nt.id && bpmCache.get(nt.id);
+    const plan = C.planBeatmatch(bA, bB);
+    if (plan && plan.inRange && plan.mul !== 1) {
+      mul = plan.mul;
+      $("bpmReadout").textContent = `matched ${plan.from}→${plan.target} BPM`;
+    } else if (plan && !plan.inRange) {
+      $("bpmReadout").textContent = `${plan.from} vs ${plan.target} BPM — too far apart`;
+    }
+  }
+  if (xfade.urlB) revoke(xfade.urlB);
+  xfade.urlB = safeURL(nt.blob);
+  xfade.idB = nt.id; xfade.mul = mul; xfade.dur = Math.max(0.5, dur);
+  audioB.src = xfade.urlB;
+  audioB.preservesPitch = audioB.mozPreservesPitch = audioB.webkitPreservesPitch = model.preservesPitch;
+  audioB.defaultPlaybackRate = audioB.playbackRate = clamp(effRate * mul, 0.0625, 4);
+  audioB.volume = 0;
+  audioB.load();
+  await new Promise(res => {
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    audioB.addEventListener("loadeddata", fin, { once: true });
+    setTimeout(fin, 2500);                  /* decode slow? fade in anyway — canplay will rescue it */
+  });
+  if (ctx.state === "suspended") await ctx.resume();
+  await audioB.play().catch(() => {});      /* autoplay policy already satisfied by deck A playing */
+  xfade.t0 = performance.now(); xfade.active = true;
+  runXfade();
+}
+function runXfade() {
+  xfade.raf = requestAnimationFrame(() => {
+    if (!xfade.active) return;
+    const x = clamp((performance.now() - xfade.t0) / (xfade.dur * 1000), 0, 1);
+    audioB.volume = C.xfadeGain(x, false);
+    audio.volume = C.xfadeGain(x, true);
+    if (x < 1) { if (audioB.readyState >= 2 && audioB.paused) audioB.play().catch(() => {}); runXfade(); }
+    else finishXfade();
+  });
+}
+function finishXfade() {
+  xfade.active = false; xfade.busy = false;
+  const id = xfade.idB;
+  cancelAnimationFrame(xfade.raf); xfade.raf = 0;
+  try { audioB.pause(); } catch { /* ignore */ }
+  audioB.removeAttribute("src"); audioB.load();
+  revoke(xfade.urlB); xfade.urlB = null; xfade.idB = null; xfade.mul = 1;
+  audio.volume = 1;                          /* master gain handles real volume */
+  if (id) commitTrack(id, true);             /* promote deck B to deck A — seamless */
+}
+function bailXfade() {                       /* user took manual control mid-fade */
+  if (!xfade.active && !xfade.busy) return;
+  cancelAnimationFrame(xfade.raf); xfade.raf = 0;
+  try { audioB.pause(); } catch { /* ignore */ }
+  audioB.removeAttribute("src"); audioB.load();
+  revoke(xfade.urlB); xfade.urlB = null; xfade.idB = null; xfade.mul = 1;
+  xfade.active = false; xfade.busy = false;
+  audio.volume = 1;
+}
+
+/* ---- BPM estimation (first 30 s decoded offline, cached per session) ---- */
+async function ensureBpm(t) {
+  if (!t || !t.blob) return null;
+  if (bpmCache.has(t.id)) return bpmCache.get(t.id);
+  if (bpmBusy.has(t.id)) return null;
+  bpmBusy.add(t.id);
+  try {
+    const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!AC) return null;
+    const sr = 22050;
+    const probe = new AC(2, 1, sr);
+    const buf = await probe.decodeAudioData(await t.blob.slice(0, Math.min(t.blob.size, 6 << 20)).arrayBuffer());
+    const frames = Math.min(buf.length, Math.floor(sr * 30));
+    const off = new AC(2, Math.max(1, frames), sr);
+    const srcN = off.createBufferSource(); srcN.buffer = buf; srcN.connect(off.destination); srcN.start();
+    const rendered = await off.startRendering();
+    const bpm = C.estimateBpm(rendered);
+    bpmCache.set(t.id, bpm);
+    if (t.id === currentId) updateBpmReadout();
+    return bpm;
+  } catch (e) { console.warn("BPM estimate failed for", t.title, e); bpmCache.set(t.id, null); return null; }
+  finally { bpmBusy.delete(t.id); }
+}
+function updateBpmReadout() {
+  const el = $("bpmReadout"); if (!el) return;
+  const b = currentId ? bpmCache.get(currentId) : null;
+  if (!settings.beatmatch) { el.textContent = ""; return; }
+  el.textContent = b ? `${b} BPM` : (currentId ? "BPM…" : "");
+}
+
+/* ---- shared track promotion (used by playTrack AND crossfade completion) ---- */
+async function commitTrack(id, autoplay) {
+  const t = trackById(id); if (!t) return;
+  const ov = perTrack[id];
+  if (ov) { settings.cents = clamp(Math.round(ov.cents || 0), -1200, 1200); settings.tempo = clamp(+ov.tempo || 1, 0.5, 2); }
+  if (audioUrl) revoke(audioUrl);
+  audioUrl = safeURL(t.blob);
+  audio.pause();
+  audio.src = audioUrl;
+  currentId = id;
+  applySettings();               // sets preservesPitch BEFORE load so the latch is correct
+  audio.load();
+  $("title").textContent = t.title; $("artist").textContent = t.artist || "Unknown artist";
+  setCover(t); $("duration").textContent = fmt(t.duration); $("currentTime").textContent = "0:00";
+  loopA = loopB = null; updateLoop();
+  scheduleRender(); updateMediaSession(t);
+  if (autoplay) { await audio.play(); countPlay(id); }
+  if (settings.beatmatch) ensureBpm(t);
+  return t;
+}
 async function playTrack(id, autoplay = true) {
   const t = trackById(id); if (!t) return;
   try {
     await setupAudio();
     if (ctx.state === "suspended") await ctx.resume();
-    /* per-track settings override global */
-    const ov = perTrack[id];
-    if (ov) { settings.cents = clamp(Math.round(ov.cents || 0), -1200, 1200); settings.tempo = clamp(+ov.tempo || 1, 0.5, 2); }
-    if (audioUrl) revoke(audioUrl);
-    audioUrl = safeURL(t.blob);
-    audio.pause();
-    audio.src = audioUrl;
-    currentId = id;
-    applySettings();               // sets preservesPitch BEFORE load so the latch is correct
-    audio.load();
-    $("title").textContent = t.title; $("artist").textContent = t.artist || "Unknown artist";
-    setCover(t); $("duration").textContent = fmt(t.duration); $("currentTime").textContent = "0:00";
-    loopA = loopB = null; updateLoop();
-    scheduleRender(); updateMediaSession(t);
-    if (autoplay) { await audio.play(); countPlay(id); }
+    bailXfade();                 /* manual selection overrides any in-flight fade */
+    await commitTrack(id, autoplay);
     say(autoplay ? `Playing ${t.title}` : `Loaded ${t.title}. Press Play to start.`);
   } catch (e) {
     if (e?.name === "NotAllowedError") say("Playback needs a tap on Play in this browser.");
@@ -333,7 +486,8 @@ function saveCurrent() {
 async function removeTrack(id) {
   const t = trackById(id); if (!t) return;
   try {
-    if (id === currentId) { audio.pause(); audio.removeAttribute("src"); audio.load(); revoke(audioUrl); audioUrl = null; currentId = null; $("title").textContent = "Nothing playing"; $("artist").textContent = "Add a song to begin"; setCover(null); }
+    if (id === currentId || id === xfade.idB) { bailXfade(); audio.pause(); audio.removeAttribute("src"); audio.load(); revoke(audioUrl); audioUrl = null; currentId = null; $("title").textContent = "Nothing playing"; $("artist").textContent = "Add a song to begin"; setCover(null); }
+    bpmCache.delete(id);
     for (const p of playlists) p.trackIds = p.trackIds.filter(x => x !== id);
     tracks = tracks.filter(x => x.id !== id);
     selected.delete(id); delete perTrack[id];
@@ -565,14 +719,15 @@ function wire() {
     try { if (ctx?.state === "suspended") await ctx.resume(); if (audio.paused) await audio.play(); else audio.pause(); }
     catch { say("Playback needs a user gesture. Press Play again."); }
   };
-  $("prev").onclick = () => advance(-1);
-  $("next").onclick = () => advance(1);
-  $("skipBack").onclick = () => { audio.currentTime = Math.max(0, audio.currentTime - settings.skip); };
-  $("skipFwd").onclick = () => { audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + settings.skip); };
+  $("prev").onclick = () => { bailXfade(); advance(-1); };
+  $("next").onclick = () => { bailXfade(); advance(1); };
+  $("skipBack").onclick = () => { bailXfade(); audio.currentTime = Math.max(0, audio.currentTime - settings.skip); };
+  $("skipFwd").onclick = () => { bailXfade(); audio.currentTime = Math.min(audio.duration || Infinity, audio.currentTime + settings.skip); };
 
   audio.addEventListener("play", () => { const np = document.querySelector(".nowplaying") || document.querySelector(".player"); np.classList.add("playing"); $("playIcon").innerHTML = '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'; $("play").setAttribute("aria-label", "Pause"); });
   audio.addEventListener("pause", () => { const np = document.querySelector(".nowplaying") || document.querySelector(".player"); np.classList.remove("playing"); $("playIcon").innerHTML = '<path d="M8 5v14l11-7z"/>'; $("play").setAttribute("aria-label", "Play"); });
   audio.addEventListener("ended", () => {
+    if (xfade.active || xfade.busy) return;   /* deck B already owns the transition */
     if (repeat === "one") { audio.currentTime = 0; audio.play().catch(() => {}); return; }
     if (!advance(1)) say("Track ended.");
   });
@@ -581,10 +736,11 @@ function wire() {
     if (loopA !== null && loopB !== null && audio.currentTime >= loopB) audio.currentTime = loopA;
     $("currentTime").textContent = fmt(audio.currentTime);
     if (audio.duration && !$("seek").matches(":active")) $("seek").value = audio.currentTime / audio.duration * 1000;
+    armXfade();   /* near the end? quietly preload deck B and start the fade */
   });
   audio.addEventListener("loadedmetadata", () => { $("duration").textContent = fmt(audio.duration); });
 
-  $("seek").addEventListener("input", e => { if (audio.duration) audio.currentTime = Number(e.target.value) / 1000 * audio.duration; });
+  $("seek").addEventListener("input", e => { bailXfade(); if (audio.duration) audio.currentTime = Number(e.target.value) / 1000 * audio.duration; });
   $("pitch").addEventListener("input", e => setPitch(e.target.value));
   $("centsNumber").onchange = e => setPitch(e.target.value);
   $("tempo").addEventListener("input", e => setTempo(e.target.value));
@@ -593,6 +749,22 @@ function wire() {
   $("volume").addEventListener("input", e => { settings.volume = +e.target.value; applySettings(); });
   $("mute").onchange = e => { settings.mute = e.target.checked; applySettings(); };
   $("reverb").addEventListener("input", e => { settings.reverb = +e.target.value; applySettings(); });
+  /* Crossfade & beatmatch — live readout, persisted, and actually wired to the deck-B engine */
+  $("xfade").addEventListener("input", e => {
+    const v = clamp(Math.round(+e.target.value || 0), 0, 12);
+    settings.crossfade = v;
+    if (xfade.active) xfade.pending = v;   // in-flight fade keeps its length; next one uses this
+    xfadeUI();
+    metaSetSoon("settings", () => settings);
+  });
+  $("beatmatch").onchange = e => {
+    settings.beatmatch = e.target.checked;
+    metaSetSoon("settings", () => settings);
+    if (settings.beatmatch && currentId) { ensureBpm(trackById(currentId)); updateBpmReadout(); }
+    else $("bpmReadout").textContent = "";
+    say(settings.beatmatch ? "Auto-BPM match on — transitions will nudge tempo within ±6%." : "Auto-BPM match off.");
+  };
+  xfadeUI();
   document.querySelectorAll(".eq").forEach((elm, i) => { elm.addEventListener("input", () => { settings.eq[i] = clamp(+elm.value || 0, -12, 12); applySettings(); }); });
   document.querySelectorAll("[data-preset]").forEach(b => b.onclick = () => setPreset(b.dataset.preset));
   $("resetPitch").onclick = () => { settings.cents = 0; applySettings(); saveCurrent(); say("Pitch returned to 0 cents — original sound restored."); };
@@ -683,6 +855,7 @@ async function init() {
     $("acceptExt").textContent = supportedExts.join(" · ");
     $("files").accept = "." + supportedExts.join(",.") + ",audio/*";
     applySettings();
+    xfadeUI(); updateBpmReadout();
     render();
     retag();
     if (playlist().trackIds.length) await playTrack(playlist().trackIds[0], false);
@@ -708,6 +881,6 @@ async function retag() {
   }
   if (n) { scheduleRender(); const c = trackById(currentId); if (c) { $("title").textContent = c.title; $("artist").textContent = c.artist; setCover(c); updateMediaSession(c); } }
 }
-window.DetuneApp = { applySettings, computeModel: () => C.computePlayback(settings), settings, get currentId() { return currentId; }, trackById };
+window.DetuneApp = { applySettings, computeModel: () => C.computePlayback(settings), settings, get currentId() { return currentId; }, trackById, ensureBpm, bpmCache };
 init();
 })();
