@@ -18,9 +18,16 @@
     const cents = clamp(Math.round(settings.cents || 0), -1200, 1200);
     const tempo = clamp(Number(settings.tempo) || 1, 0.5, 2);
     if (settings.link) {
-      return { rate: centsToRatio(cents), workletCents: 0, preservesPitch: false, cents, tempo };
+      /* Vinyl mode: the element's raw rate carries BOTH pitch and tempo; the worklet is bypassed
+         so nothing is applied twice. */
+      const rate = clamp(tempo * centsToRatio(cents), 0.0625, 4);
+      return { rate, workletCents: 0, preservesPitch: false, cents, tempo,
+               elementRatio: rate, workletRatio: 1 };
     }
-    return { rate: tempo, workletCents: cents, preservesPitch: true, cents, tempo };
+    /* Detuned mode: worklet does the pitch (time-stretch), element does ONLY the tempo with
+       preservesPitch latched ON — exactly one stage per transformation, no chipmunk doubling. */
+    return { rate: tempo, workletCents: cents, preservesPitch: true, cents, tempo,
+             elementRatio: tempo, workletRatio: centsToRatio(cents) };
   }
 
   /* ---------- note names for the pitch readout ---------- */
@@ -36,8 +43,53 @@
      Hashing only the first 1 MB + size can collide between different tracks that share a header
      region. Strategy: hash head (1 MB) + tail (1 MB) + size. For files ≤ 2 MB this covers every
      byte (exact). Larger files remain probabilistic but far more discriminating than head-only. */
+  /* Pure-JS SHA-256 fallback for non-secure contexts (plain http on a LAN IP), where
+     crypto.subtle is undefined. Deterministic and content-only, so duplicate detection
+     survives reloads instead of silently failing like the old name:size:mtime key did. */
+  const SHA_K = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,0x92722c36,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x776d7999,0x8ce7e3ec,0xa3f8980e,0xbef9a3f7,0xcbf19e0d,0xb65b29c0,0xc57c263f,0x06ca6351,
+    0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c7c92e,
+    0x92722c36,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,
+    0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,
+    0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,
+    0xc67178f2];
+  function sha256Hex(u8) {
+    const rotr = (x, n) => ((x >>> n) | (x << (32 - n))) >>> 0;
+    let H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const len = u8.length, total = ((len + 9) >> 6 << 6) + 64; // 64-byte blocks incl. 0x80 + 8-byte length
+    const m = new Uint8Array(total); m.set(u8); m[len] = 0x80;
+    const bitsHi = Math.floor(len / 2 ** 29), bitsLo = (len * 8) >>> 0;
+    const dv = new DataView(m.buffer);
+    dv.setUint32(total - 8, bitsHi); dv.setUint32(total - 4, bitsLo);
+    const w = new Uint32Array(64);
+    for (let o = 0; o < total; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25), ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + SHA_K[i] + w[i]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22), mj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + mj) >>> 0;
+        h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+      }
+      H = [(H[0]+a)>>>0,(H[1]+b)>>>0,(H[2]+c)>>>0,(H[3]+d)>>>0,(H[4]+e)>>>0,(H[5]+f)>>>0,(H[6]+g)>>>0,(H[7]+h)>>>0];
+    }
+    return H.map(x => x.toString(16).padStart(8, "0")).join("");
+  }
+
   async function hashFileWith(file, subtle) {
-    if (!subtle) return `${file.name}:${file.size}:${file.lastModified}`; // non-secure-context fallback
     const TAIL = 1024 * 1024;
     let buf;
     if (file.size <= TAIL * 2) {
@@ -48,6 +100,10 @@
       buf = new Uint8Array(TAIL * 2);
       buf.set(head, 0); buf.set(tail, TAIL);
     }
+    /* Content-only hash + size. Never include name/lastModified: the same song imported twice
+       (renamed, or re-dropped after a failed save) must be detected as a duplicate, and the
+       hash must stay stable across sessions so dedupe survives reloads. */
+    if (!subtle) return sha256Hex(buf) + "-" + file.size; // non-secure-context fallback (pure JS)
     const digest = await subtle.digest("SHA-256", buf);
     return [...new Uint8Array(digest)].map((x) => x.toString(16).padStart(2, "0")).join("") + `-${file.size}`;
   }
@@ -201,6 +257,6 @@
   global.DetuneCore = {
     clamp, centsToRatio, ratioToCents, computePlayback, freqToNote, hashFileWith,
     detectFormats, fileAccepted, parseLrc, validateBackup, sanitizeSettings, DEFAULT_SETTINGS,
-    makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES,
+    makeQueue, queueAdd, nextFromQueue, pickNext, EQ_FREQS, NOTE_NAMES, sha256Hex,
   };
 })(typeof window !== "undefined" ? window : globalThis);

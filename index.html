@@ -170,16 +170,19 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 </section>
 <div class="layout">
 <section class="glass panel library" aria-label="Playlist library">
-<div class="drop" id="drop"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i><span>Drop audio files here or</span><button id="browse">browse files</button><span class="small">MP3 · WAV</span><input id="files" type="file" accept=".mp3,.wav,audio/mpeg,audio/wav,audio/x-wav" multiple hidden></div>
-<div class="libbar"><div class="pl"><select id="playlistSelect" aria-label="Select playlist"></select><button class="secondary icon" id="newPlaylist" title="New playlist" aria-label="New playlist"><i class="fa-solid fa-plus" aria-hidden="true"></i></button><button class="secondary icon" id="renamePlaylist" title="Rename playlist" aria-label="Rename playlist"><i class="fa-solid fa-pen" aria-hidden="true"></i></button></div>
-<div class="modes"><button class="secondary" id="shuffle">Shuffle: off</button><button class="secondary" id="repeat">Repeat: off</button></div></div>
-<div class="findbar"><label class="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="search" type="search" placeholder="Search title or artist…" aria-label="Search playlist"></label>
-<select id="sort" aria-label="Sort tracks"><option value="added">Date added</option><option value="title">Title</option><option value="artist">Artist</option><option value="duration">Duration</option></select></div>
+<div class="drop" id="drop"><i class="fa-solid fa-cloud-arrow-up" aria-hidden="true"></i><span>Drop audio files here or</span><button id="browse">browse files</button><span class="small" id="acceptExt">MP3 · WAV</span><input id="files" type="file" accept=".mp3,.wav,.ogg,.flac,.m4a,.aac,.opus,audio/*" multiple hidden></div>
+<div class="libbar"><div class="pl"><select id="playlistSelect" aria-label="Select playlist"></select><button class="secondary icon" id="newPlaylist" title="New playlist" aria-label="New playlist"><i class="fa-solid fa-plus" aria-hidden="true"></i></button><button class="secondary icon" id="renamePlaylist" title="Rename playlist" aria-label="Rename playlist"><i class="fa-solid fa-pen" aria-hidden="true"></i></button><button class="secondary icon" id="deletePlaylist" title="Delete playlist" aria-label="Delete playlist"><i class="fa-solid fa-trash" aria-hidden="true"></i></button></div>
+<div class="modes"><button class="secondary" id="shuffle" aria-pressed="false">Shuffle: off</button><button class="secondary" id="repeat">Repeat: off</button><button class="secondary" id="enqueueSel" title="Queue selected tracks (Q)"><i class="fa-solid fa-list-ul" aria-hidden="true"></i>Queue selected</button></div></div>
+<div class="findbar"><label class="search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><input id="search" type="search" placeholder="Search title or artist…" aria-label="Search playlist"></label><button class="secondary icon" id="clearSearch" title="Clear search and filters" aria-label="Clear search and filters"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+<select id="viewSelect" aria-label="Library view"><option value="playlist">Playlist</option><option value="favorites">Favorites</option><option value="recent">Recently played</option><option value="most">Most played</option></select>
+<select id="sort" aria-label="Sort tracks"><option value="added">Date added</option><option value="title">Title</option><option value="artist">Artist</option><option value="duration">Duration</option><option value="plays">Play count</option></select></div>
 <div class="heading"><h2>Playlist</h2><span class="muted" id="count">0 tracks</span><div class="bulk">
 <button class="secondary icon" id="selectAll" title="Select all" aria-label="Select all"><i class="fa-solid fa-check-double" aria-hidden="true"></i></button>
 <button class="secondary icon" id="deleteSelected" title="Delete selected" aria-label="Delete selected"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
 <button class="secondary icon" id="clearAll" title="Clear playlist" aria-label="Clear playlist"><i class="fa-solid fa-broom" aria-hidden="true"></i></button></div></div>
 <ul class="tracks" id="trackList" aria-label="Tracks"></ul>
+<div class="queuebar"><h3><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>Up next <span class="muted" id="queueCount"></span></h3><button class="secondary icon" id="clearQueue" title="Clear queue" aria-label="Clear queue"><i class="fa-solid fa-ban" aria-hidden="true"></i></button></div>
+<ul class="tracks queue" id="queueList" aria-label="Play queue"></ul>
 <div class="foot"><button class="secondary" id="exportWav"><i class="fa-solid fa-file-audio" aria-hidden="true"></i>Export WAV</button><button class="secondary" id="exportBackup"><i class="fa-solid fa-download" aria-hidden="true"></i>Backup</button><button class="secondary" id="importBackup"><i class="fa-solid fa-upload" aria-hidden="true"></i>Restore</button><input id="backupFile" type="file" accept="application/json,.json" hidden><span class="storage" id="storage">Checking local storage…</span></div>
 </section>
 <aside class="glass sound" aria-label="Sound controls">
@@ -188,13 +191,18 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <input class="range" id="pitch" type="range" min="-1200" max="1200" step="1" value="0" aria-label="Pitch shift in cents">
 <div class="fieldrow"><label for="centsNumber">Exact shift</label><input class="number" id="centsNumber" type="number" min="-1200" max="1200" step="1" value="0"><span class="small unit">cents</span></div>
 <div class="chips"><button class="chip" data-preset="432"><i class="fa-solid fa-wave-square" aria-hidden="true"></i>A = 432 Hz</button><button class="chip" data-preset="nightcore"><i class="fa-solid fa-bolt" aria-hidden="true"></i>Nightcore</button><button class="chip" data-preset="slowed"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i>Slowed</button><button class="chip" data-preset="reverb"><i class="fa-solid fa-water" aria-hidden="true"></i>Reverb-slowed</button><button class="chip" data-preset="reset"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i>Reset</button></div>
-<div class="fieldrow"><label for="tempo">Tempo</label><input class="number" id="tempoNumber" type="number" min=".5" max="2" step=".01" value="1"><span class="small unit">×</span></div>
+<div class="fieldrow"><label for="tempo">Tempo</label><input class="number" id="tempoNumber" type="number" min=".5" max="2" step=".01" value="1"><span class="small unit">×</span><button class="secondary icon" id="resetTempo" title="Reset tempo to 1.00×" aria-label="Reset tempo to 1.00×"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i></button><button class="secondary icon" id="resetPitch" title="Reset pitch to 0 cents" aria-label="Reset pitch to 0 cents"><i class="fa-solid fa-wave-square" aria-hidden="true"></i></button></div>
+<p class="mode small" id="modeReadout">Detuned mode — pitch 0c via DSP · speed 1.00× independent</p>
 <input class="range" id="tempo" type="range" min=".5" max="2" step=".01" value="1" aria-label="Tempo multiplier">
 <label class="toggleline"><input id="link" type="checkbox"> Link pitch and speed (vinyl mode)</label></div>
 <div class="section"><h3><i class="fa-solid fa-chart-simple" aria-hidden="true"></i>Equalizer</h3><div class="eqgrid">
-<label>Bass<input class="range eq" data-freq="120" type="range" min="-12" max="12" value="0" aria-label="Bass EQ"></label>
-<label>Mid<input class="range eq" data-freq="1000" type="range" min="-12" max="12" value="0" aria-label="Mid EQ"></label>
-<label>Treble<input class="range eq" data-freq="8000" type="range" min="-12" max="12" value="0" aria-label="Treble EQ"></label></div>
+<label>Bass 60<input class="range eq" data-freq="60" type="range" min="-12" max="12" value="0" aria-label="Bass 60 Hz EQ"></label>
+<label>Low mid 170<input class="range eq" data-freq="170" type="range" min="-12" max="12" value="0" aria-label="Low mid 170 Hz EQ"></label>
+<label>Mid 350<input class="range eq" data-freq="350" type="range" min="-12" max="12" value="0" aria-label="Mid 350 Hz EQ"></label>
+<label>Vocal 1k<input class="range eq" data-freq="1000" type="range" min="-12" max="12" value="0" aria-label="Vocal 1000 Hz EQ"></label>
+<label>Presence 3.5k<input class="range eq" data-freq="3500" type="range" min="-12" max="12" value="0" aria-label="Presence 3500 Hz EQ"></label>
+<label>Air 10k<input class="range eq" data-freq="10000" type="range" min="-12" max="12" value="0" aria-label="Air 10000 Hz EQ"></label></div>
+<div class="chips eqpresets"><button class="chip" data-preset="flat">Flat</button><button class="chip" data-preset="bass">Bass boost</button><button class="chip" data-preset="no-bass">No bass</button><button class="chip" data-preset="vocal">Vocal</button><button class="chip" data-preset="treble">Treble</button><button class="chip" data-preset="warm">Warm</button><button class="chip" data-preset="bright">Bright</button></div>
 <div class="fieldrow"><label for="reverb">Reverb</label><input id="reverb" class="range" type="range" min="0" max="1" step=".01" value="0" aria-label="Reverb wet mix"></div></div>
 <div class="section"><h3><i class="fa-solid fa-repeat" aria-hidden="true"></i>A–B loop</h3><div class="fieldrow"><button class="secondary" id="setA"><i class="fa-solid fa-flag" aria-hidden="true"></i>Set A</button><button class="secondary" id="setB"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>Set B</button><button class="secondary" id="clearLoop"><i class="fa-solid fa-xmark" aria-hidden="true"></i>Clear</button></div><span id="loopStatus" class="small">A–B off</span></div>
 <p class="status visually-hidden" id="status" role="status" aria-live="polite">Ready. Audio starts after you press Play.</p>
@@ -204,11 +212,14 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <section class="glass player" aria-label="Audio player">
 <div class="np"><div class="cover" id="cover" aria-hidden="true">♫</div><div class="npmeta"><h2 class="title" id="title">Nothing playing</h2><p class="artist" id="artist">Add a song to begin</p></div></div>
 <div class="center"><div class="transport">
+<button class="iconbtn" id="skipBack" aria-label="Skip back 5 seconds" title="Skip back 5s (-5s)"><i class="fa-solid fa-backward-fast" aria-hidden="true"></i></button>
 <button class="iconbtn" id="prev" aria-label="Previous track" title="Previous (←)"><i class="fa-solid fa-backward-step" aria-hidden="true"></i></button>
 <button class="iconbtn primary" id="play" aria-label="Play" title="Play or pause (Space)"><svg viewBox="0 0 24 24" id="playIcon"><path d="M8 5v14l11-7z"/></svg></button>
 <button class="iconbtn" id="next" aria-label="Next track" title="Next (→)"><i class="fa-solid fa-forward-step" aria-hidden="true"></i></button>
+<button class="iconbtn" id="skipFwd" aria-label="Skip forward 5 seconds" title="Skip forward 5s (+5s)"><i class="fa-solid fa-forward-fast" aria-hidden="true"></i></button>
+<label class="sleep small" for="sleepMin" title="Pause playback after a while"><i class="fa-solid fa-moon" aria-hidden="true"></i>Sleep<input class="number" id="sleepMin" type="number" min="0" max="240" step="5" value="0" aria-label="Sleep timer in minutes">min</label>
 </div><div class="scrub"><span id="currentTime">0:00</span><input class="range" id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek through track"><span id="duration">0:00</span></div></div>
-<div class="vol"><i class="fa-solid fa-volume-high spk" aria-hidden="true"></i><input id="volume" class="range" type="range" min="0" max="1" step=".01" value=".8" aria-label="Volume"><label class="toggleline"><input id="mute" type="checkbox"> Mute</label></div>
+<div class="vol"><i class="fa-solid fa-volume-high spk" aria-hidden="true"></i><input id="volume" class="range" type="range" min="0" max="1" step=".01" value=".8" aria-label="Volume"><label class="toggleline"><input id="mute" type="checkbox"> Mute</label><label class="sleep small" for="skipSec">Skip<input class="number" id="skipSec" type="number" min="1" max="60" step="1" value="5" aria-label="Skip interval in seconds">s</label></div>
 </section>
 <div class="modal" id="shortcuts" role="dialog" aria-modal="true" aria-labelledby="shortcutTitle"><div class="glass dialog"><h2 id="shortcutTitle">Keyboard shortcuts</h2><ul><li><b>Space</b> — play / pause</li><li><b>← / →</b> — seek 5 seconds</li><li><b>[ / ]</b> — pitch down / up 1 semitone</li><li><b>0</b> — reset pitch</li><li><b>M</b> — mute</li><li><b>S</b> — shuffle</li><li><b>R</b> — cycle repeat mode</li></ul><button class="secondary wide" id="closeShortcuts">Close</button></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -221,6 +232,7 @@ input[type=checkbox]{accent-color:var(--blood);width:16px;height:16px}
 <div class="lyredit" id="lyrEditBox" hidden><textarea id="lyrText" aria-label="Lyrics text" placeholder="Paste lyrics here. Lines with timestamps like [01:23.45] will follow the song."></textarea><div class="lyrtools"><button class="secondary" id="lyrSave"><i class="fa-solid fa-check" aria-hidden="true"></i>Save</button><button class="secondary" id="lyrCancel">Cancel</button></div></div>
 </section>
 <audio id="audio" preload="metadata"></audio>
+<script src="./core.js" defer></script>
 <script src="./tags.js" defer></script>
 <script src="./fx.js" defer></script>
 <script src="./app.js" defer></script>
