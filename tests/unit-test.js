@@ -102,9 +102,14 @@ assert.strictEqual(C.pickNext(ids, "b", { dir: 1, shuffle: false, repeat: "off",
 /* ---- queueAdd ---- */
 let q = [];
 C.queueAdd(q, "a", "end"); C.queueAdd(q, "b", "end"); C.queueAdd(q, "a", "end");
-assert.deepStrictEqual(q, ["a","b","a"], "end allows duplicates? NO — dedupe: " + JSON.stringify(q));
+assert.deepStrictEqual(q, ["a","b","a"], '"end" appends and allows deliberate duplicates');
 C.queueAdd(q, "c", "next");
-assert.deepStrictEqual(q, ["c","a","b","a"], "next inserts at front (play next): " + JSON.stringify(q));
+assert.deepStrictEqual(q, ["c","a","b","a"], "next inserts at front (play next)");
+C.queueAdd(q, "a", "next");
+assert.deepStrictEqual(q, ["a","c","b","a"], '"next" moves an already-queued id to the front instead of duplicating it');
+assert.strictEqual(C.nextFromQueue(q), "a", "queue drains FIFO from the front");
+assert.deepStrictEqual(q, ["c","b","a"]);
+assert.strictEqual(C.queueAdd(q, null, "next"), q, "null id is a no-op");
 
 /* ---- hashFile determinism (pure JS fallback) — real File objects, like browsers ---- */
 (async () => {
@@ -141,7 +146,7 @@ assert.deepStrictEqual(q, ["c","a","b","a"], "next inserts at front (play next):
 
   /* ---- backup validation ---- */
   const good = { version: 3, tracks: [{ id: "t1", name: "a.mp3", title: "A", artist: "", duration: 12, added: 1, blobData: "AAAA" }, { id: "t2", name: "bad", blobData: "" }], playlists: [{ name: "P", trackIds: ["t1","t2"] }] };
-  const v = C.validateBackup(good);
+  const v = C.validateBackup(good, { genId: () => "tid" });
   assert.strictEqual(v.tracks.length, 1, "invalid track (empty blobData) dropped");
   assert.strictEqual(v.tracks[0].id, "t1", "valid id preserved");
   assert.strictEqual(v.playlists[0].trackIds.length, 2, "playlist ids kept (app skips unknown ids on restore)");
